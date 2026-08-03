@@ -9,6 +9,9 @@ enum UserRole {
   transport,
   foreignInvestor,
   globalExporter,
+  taxiService,
+  vehicleRental,
+  propertyOwner,
   admin,
 }
 
@@ -19,16 +22,33 @@ extension UserRoleX on UserRole {
     UserRole.buyer => 'Buyer',
     UserRole.landowner => 'Landowner',
     UserRole.broker => 'Broker',
-    UserRole.laborer => 'Laborer',
-    UserRole.transport => 'Transport',
+    UserRole.laborer => 'Labourer',
+    UserRole.transport => 'Transport Goods',
     UserRole.foreignInvestor => 'Foreign Investor',
     UserRole.globalExporter => 'Global Exporter',
+    UserRole.taxiService => 'Taxi Service',
+    UserRole.vehicleRental => 'Vehicle Rent',
+    UserRole.propertyOwner => 'Property & Land Rental',
     UserRole.admin => 'Administrator',
   };
 
+  /// Short label used where space is tight (badges, pills).
+  String get shortLabel => switch (this) {
+    UserRole.transport => 'Transport',
+    UserRole.propertyOwner => 'Property',
+    UserRole.vehicleRental => 'Vehicle Rent',
+    _ => label,
+  };
+
   /// Roles that must be approved by an admin before gaining full access.
-  bool get requiresApproval =>
-      this == UserRole.broker || this == UserRole.globalExporter;
+  /// Commercial vehicle operators are included because they carry
+  /// permit / licensing obligations.
+  bool get requiresApproval => const {
+    UserRole.broker,
+    UserRole.globalExporter,
+    UserRole.taxiService,
+    UserRole.vehicleRental,
+  }.contains(this);
 
   static UserRole fromId(String value) =>
       UserRole.values.firstWhere((e) => e.name == value,
@@ -152,6 +172,9 @@ enum LedgerType {
   transportFare,
   investment,
   jobPostingFee,
+  taxiFare,
+  vehicleRentFee,
+  propertyRent,
 }
 
 extension LedgerTypeX on LedgerType {
@@ -162,6 +185,9 @@ extension LedgerTypeX on LedgerType {
     LedgerType.transportFare => 'Transport Fare',
     LedgerType.investment => 'Investment',
     LedgerType.jobPostingFee => 'Job Posting Fee',
+    LedgerType.taxiFare => 'Taxi Fare',
+    LedgerType.vehicleRentFee => 'Vehicle Rent',
+    LedgerType.propertyRent => 'Property Rent',
   };
 
   static LedgerType fromId(String value) =>
@@ -169,22 +195,43 @@ extension LedgerTypeX on LedgerType {
           orElse: () => LedgerType.laborWage);
 }
 
-enum VehicleCategory { goods, passenger }
+enum VehicleCategory { goods, passenger, rental }
 
 extension VehicleCategoryX on VehicleCategory {
   String get label => switch (this) {
     VehicleCategory.goods => 'Goods Vehicle',
-    VehicleCategory.passenger => 'Passenger Vehicle',
+    VehicleCategory.passenger => 'Taxi / Passenger',
+    VehicleCategory.rental => 'Self-Drive Rental',
   };
 
   String get description => switch (this) {
     VehicleCategory.goods => 'Commercial transport for agricultural goods',
-    VehicleCategory.passenger => 'Transit for people and work crews',
+    VehicleCategory.passenger => 'Auto, cab, outstation and bus travel',
+    VehicleCategory.rental => 'Rented by the day, driven by the customer',
   };
+
+  /// Rentals are billed per day; everything else is billed per kilometre.
+  bool get isDailyRate => this == VehicleCategory.rental;
 
   static VehicleCategory fromId(String value) =>
       VehicleCategory.values.firstWhere((e) => e.name == value,
           orElse: () => VehicleCategory.goods);
+}
+
+/// Lifecycle for a property lease enquiry.
+enum EnquiryStatus { open, shortlisted, agreed, declined }
+
+extension EnquiryStatusX on EnquiryStatus {
+  String get label => switch (this) {
+    EnquiryStatus.open => 'Open',
+    EnquiryStatus.shortlisted => 'Shortlisted',
+    EnquiryStatus.agreed => 'Agreed',
+    EnquiryStatus.declined => 'Declined',
+  };
+
+  static EnquiryStatus fromId(String value) =>
+      EnquiryStatus.values.firstWhere((e) => e.name == value,
+          orElse: () => EnquiryStatus.open);
 }
 
 enum BookingStatus { requested, confirmed, enRoute, delivered, cancelled }

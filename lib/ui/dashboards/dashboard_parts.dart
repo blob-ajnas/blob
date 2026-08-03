@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/rbac/permissions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/money.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/job.dart';
 import '../../data/models/listing.dart';
+import '../../data/models/property.dart';
+import '../../data/models/role_subtype.dart';
 import '../../data/models/vehicle.dart';
 import '../../state/marketplace_controller.dart';
+import '../../state/session_controller.dart';
 import '../market/listing_detail_screen.dart';
 import '../jobs/job_detail_screen.dart';
 import '../widgets/common.dart';
@@ -113,7 +117,7 @@ class DashboardHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  user.role.label.toUpperCase(),
+                  user.role.shortLabel.toUpperCase(),
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontSize: 10,
@@ -663,9 +667,12 @@ class VehicleCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                vehicle.category == VehicleCategory.goods
-                    ? Icons.local_shipping
-                    : Icons.airport_shuttle,
+                vehicle.subtype?.icon ??
+                    switch (vehicle.category) {
+                      VehicleCategory.goods => Icons.local_shipping,
+                      VehicleCategory.passenger => Icons.local_taxi,
+                      VehicleCategory.rental => Icons.vpn_key,
+                    },
                 color: AppColors.primary,
               ),
             ),
@@ -693,7 +700,7 @@ class VehicleCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${Money.format(vehicle.ratePerKmPaise)} / km',
+                    '${Money.format(vehicle.ratePaise)} / ${vehicle.rateUnit}',
                     style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
@@ -758,7 +765,7 @@ class BookingCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '${booking.vehicleLabel} · ${booking.distanceKm.toStringAsFixed(0)} km',
+              '${booking.vehicleLabel} · ${booking.quantityLabel}',
               style: const TextStyle(
                 fontSize: 12.5,
                 color: AppColors.textSecondary,
@@ -1029,7 +1036,7 @@ class PendingUserCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${pendingUser.role.label} · ${pendingUser.phone}',
+                        '${pendingUser.roleLine} · ${pendingUser.phone}',
                         style: const TextStyle(
                           fontSize: 12.5,
                           color: AppColors.textSecondary,
@@ -1089,6 +1096,466 @@ class PendingUserCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Property & land rental
+// ---------------------------------------------------------------------------
+
+/// Human label for a property listing's lifecycle state.
+String propertyStatusLabel(ListingStatus status) => switch (status) {
+  ListingStatus.active => 'Available',
+  ListingStatus.reserved => 'Reserved',
+  ListingStatus.sold => 'Leased',
+  ListingStatus.withdrawn => 'Withdrawn',
+};
+
+class PropertyCard extends StatelessWidget {
+  final PropertyListing property;
+  const PropertyCard({super.key, required this.property});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<SessionController>().user!;
+    final isOwner = property.ownerId == user.id;
+    final canEnquire = !isOwner &&
+        property.status == ListingStatus.active &&
+        user.can(Permission.browseProperty);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(property.kind.icon, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        property.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${property.locality} · ${property.district}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                StatusPill.text(propertyStatusLabel(property.status)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _Tag(icon: Icons.straighten, text: property.areaLabel),
+                _Tag(
+                  icon: Icons.event_repeat,
+                  text: 'Min ${property.leaseMonthsMin} mo',
+                ),
+                _Tag(
+                  icon: Icons.event_available_outlined,
+                  text: 'From ${_dateFmt.format(property.availableFrom)}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              property.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.35,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${Money.format(property.rentPerMonthPaise)} / month',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    Text(
+                      'Deposit ${Money.format(property.depositPaise)}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                if (isOwner) _OwnerPropertyMenu(property: property),
+                if (canEnquire)
+                  FilledButton(
+                    onPressed: () => _openEnquirySheet(context, property, user),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                    ),
+                    child: const Text('Enquire'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OwnerPropertyMenu extends StatelessWidget {
+  final PropertyListing property;
+  const _OwnerPropertyMenu({required this.property});
+
+  @override
+  Widget build(BuildContext context) {
+    final market = context.read<MarketplaceController>();
+    return PopupMenuButton<ListingStatus>(
+      tooltip: 'Change status',
+      icon: const Icon(Icons.more_horiz, color: AppColors.textSecondary),
+      onSelected: (s) => market.updatePropertyStatus(property, s),
+      itemBuilder: (_) => ListingStatus.values
+          .where((s) => s != property.status)
+          .map(
+            (s) => PopupMenuItem<ListingStatus>(
+              value: s,
+              child: Text('Mark ${propertyStatusLabel(s).toLowerCase()}'),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+Future<void> _openEnquirySheet(
+  BuildContext context,
+  PropertyListing property,
+  AppUser seeker,
+) async {
+  final market = context.read<MarketplaceController>();
+  final messageCtrl = TextEditingController();
+  int months = property.leaseMonthsMin;
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (sheetContext, setSheet) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 18,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              property.title,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${Money.format(property.rentPerMonthPaise)}/month · '
+              'deposit ${Money.format(property.depositPaise)}',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Lease duration',
+              style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                IconButton.filledTonal(
+                  onPressed: months > property.leaseMonthsMin
+                      ? () => setSheet(() => months -= 1)
+                      : null,
+                  icon: const Icon(Icons.remove),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '$months months',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton.filledTonal(
+                  onPressed: months < 120
+                      ? () => setSheet(() => months += 1)
+                      : null,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: messageCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Message to owner',
+                alignLabelWithHint: true,
+                hintText: 'Intended use, start date, questions...',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Total lease value',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    Money.format(property.rentPerMonthPaise * months),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                await market.raiseEnquiry(
+                  property: property,
+                  seeker: seeker,
+                  months: months,
+                  message: messageCtrl.text.trim(),
+                );
+                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (context.mounted) {
+                  showSnack(context, 'Enquiry sent to ${property.ownerName}');
+                }
+              },
+              child: const Text('Send Enquiry'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  messageCtrl.dispose();
+}
+
+class EnquiryCard extends StatelessWidget {
+  final PropertyEnquiry enquiry;
+  final bool ownerView;
+
+  const EnquiryCard({
+    super.key,
+    required this.enquiry,
+    this.ownerView = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final market = context.read<MarketplaceController>();
+    final open = enquiry.status == EnquiryStatus.open ||
+        enquiry.status == EnquiryStatus.shortlisted;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    enquiry.propertyTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                StatusPill.text(enquiry.status.label),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              ownerView
+                  ? '${enquiry.seekerName} · ${enquiry.months} months'
+                  : '${enquiry.months} months · sent ${_dateFmt.format(enquiry.createdAt)}',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            if (enquiry.message.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  enquiry.message,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+            if (ownerView && open) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => market.setEnquiryStatus(
+                      enquiry,
+                      EnquiryStatus.declined,
+                    ),
+                    child: const Text('Decline'),
+                  ),
+                  const Spacer(),
+                  if (enquiry.status == EnquiryStatus.open)
+                    TextButton(
+                      onPressed: () => market.setEnquiryStatus(
+                        enquiry,
+                        EnquiryStatus.shortlisted,
+                      ),
+                      child: const Text('Shortlist'),
+                    ),
+                  const SizedBox(width: 6),
+                  FilledButton(
+                    onPressed: () => market.setEnquiryStatus(
+                      enquiry,
+                      EnquiryStatus.agreed,
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                    child: const Text('Agree lease'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _Tag({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppColors.textSecondary),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }

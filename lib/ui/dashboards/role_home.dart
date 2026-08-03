@@ -12,6 +12,8 @@ import '../jobs/post_job_screen.dart';
 import '../market/create_listing_screen.dart';
 import '../market/market_screen.dart';
 import '../payments/payments_screen.dart';
+import '../property/create_property_screen.dart';
+import '../property/property_market_screen.dart';
 import '../transport/fleet_screen.dart';
 import '../transport/transport_booking_screen.dart';
 import '../widgets/common.dart';
@@ -67,6 +69,9 @@ class RoleHome extends StatelessWidget {
       UserRole.transport => _transport(context, user),
       UserRole.foreignInvestor => _investor(context, user),
       UserRole.globalExporter => _exporter(context, user),
+      UserRole.taxiService => _taxi(context, user),
+      UserRole.vehicleRental => _rental(context, user),
+      UserRole.propertyOwner => _property(context, user),
       UserRole.admin => _admin(context, user),
     };
   }
@@ -100,6 +105,26 @@ class RoleHome extends StatelessWidget {
             icon: Icons.trending_up,
             label: 'Investors',
             onTap: () => _push(context, const InvestorDirectoryScreen()),
+          ),
+          ActionTile(
+            icon: Icons.agriculture_outlined,
+            label: 'Lease Land',
+            onTap: () => _push(context, const PropertyMarketScreen()),
+          ),
+          ActionTile(
+            icon: Icons.local_taxi_outlined,
+            label: 'Book Ride',
+            onTap: () => _push(context, const TransportBookingScreen.taxi()),
+          ),
+          ActionTile(
+            icon: Icons.vpn_key_outlined,
+            label: 'Rent Vehicle',
+            onTap: () => _push(context, const TransportBookingScreen.rental()),
+          ),
+          ActionTile(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Payments',
+            onTap: () => _push(context, const PaymentsScreen()),
           ),
         ],
       ),
@@ -271,9 +296,9 @@ class RoleHome extends StatelessWidget {
             onTap: () => _push(context, const FleetScreen()),
           ),
           ActionTile(
-            icon: Icons.airline_seat_recline_normal,
-            label: 'Passenger',
-            onTap: () => _push(context, const FleetScreen()),
+            icon: Icons.storefront_outlined,
+            label: 'Market',
+            onTap: () => _push(context, const MarketScreen()),
           ),
           ActionTile(
             icon: Icons.account_balance_wallet_outlined,
@@ -391,6 +416,193 @@ class RoleHome extends StatelessWidget {
         )
       else
         ...exportStock.map((l) => ListingCard(listing: l, showBuy: true)),
+    ];
+  }
+
+  // ---------------- Taxi Service ----------------
+
+  List<Widget> _taxi(BuildContext context, AppUser user) {
+    final market = context.watch<MarketplaceController>();
+    final fleet = market.vehiclesByOwner(user.id);
+    final rides = market.bookingsForUser(user.id);
+
+    return [
+      QuickActionsGrid(
+        actions: [
+          ActionTile(
+            icon: Icons.local_taxi_outlined,
+            label: 'Add Cab',
+            onTap: () => _push(context, const FleetScreen()),
+          ),
+          ActionTile(
+            icon: Icons.event_note_outlined,
+            label: 'Ride Requests',
+            onTap: () => _push(context, const FleetScreen()),
+          ),
+          ActionTile(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Earnings',
+            onTap: () => _push(context, const PaymentsScreen()),
+          ),
+          ActionTile(
+            icon: Icons.home_work_outlined,
+            label: 'Property',
+            onTap: () => _push(context, const PropertyMarketScreen()),
+          ),
+        ],
+      ),
+      const SizedBox(height: 22),
+      SectionHeader(
+        'My Cabs & Buses',
+        actionLabel: 'Manage',
+        onAction: () => _push(context, const FleetScreen()),
+      ),
+      if (fleet.isEmpty)
+        EmptyCard(
+          icon: Icons.local_taxi_outlined,
+          message:
+              'Add an auto, cab or traveller bus to start receiving rides.',
+          actionLabel: 'Add vehicle',
+          onAction: () => _push(context, const FleetScreen()),
+        )
+      else
+        ...fleet.take(4).map((v) => VehicleCard(vehicle: v)),
+      const SizedBox(height: 22),
+      const SectionHeader('Ride Requests'),
+      if (rides.isEmpty)
+        const EmptyCard(
+          icon: Icons.route_outlined,
+          message: 'No ride requests yet.',
+        )
+      else
+        ...rides.take(4).map((b) => BookingCard(booking: b, providerView: true)),
+    ];
+  }
+
+  // ---------------- Vehicle Rental ----------------
+
+  List<Widget> _rental(BuildContext context, AppUser user) {
+    final market = context.watch<MarketplaceController>();
+    final fleet = market.vehiclesByOwner(user.id);
+    final hires = market.bookingsForUser(user.id);
+
+    return [
+      const InfoBanner(
+        icon: Icons.vpn_key_outlined,
+        message:
+            'Self-drive rentals are billed per day. Confirm licence and '
+            'deposit before releasing a vehicle.',
+      ),
+      const SizedBox(height: 20),
+      QuickActionsGrid(
+        actions: [
+          ActionTile(
+            icon: Icons.directions_car_filled_outlined,
+            label: 'Add Vehicle',
+            onTap: () => _push(context, const FleetScreen()),
+          ),
+          ActionTile(
+            icon: Icons.assignment_turned_in_outlined,
+            label: 'Hire Requests',
+            onTap: () => _push(context, const FleetScreen()),
+          ),
+          ActionTile(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Earnings',
+            onTap: () => _push(context, const PaymentsScreen()),
+          ),
+          ActionTile(
+            icon: Icons.home_work_outlined,
+            label: 'Property',
+            onTap: () => _push(context, const PropertyMarketScreen()),
+          ),
+        ],
+      ),
+      const SizedBox(height: 22),
+      SectionHeader(
+        'Rental Fleet',
+        actionLabel: 'Manage',
+        onAction: () => _push(context, const FleetScreen()),
+      ),
+      if (fleet.isEmpty)
+        EmptyCard(
+          icon: Icons.directions_car_outlined,
+          message: 'List cars, jeeps, SUVs, bikes or scooters for daily hire.',
+          actionLabel: 'Add vehicle',
+          onAction: () => _push(context, const FleetScreen()),
+        )
+      else
+        ...fleet.take(4).map((v) => VehicleCard(vehicle: v)),
+      const SizedBox(height: 22),
+      const SectionHeader('Hire Requests'),
+      if (hires.isEmpty)
+        const EmptyCard(
+          icon: Icons.event_available_outlined,
+          message: 'No rental requests yet.',
+        )
+      else
+        ...hires.take(4).map((b) => BookingCard(booking: b, providerView: true)),
+    ];
+  }
+
+  // ---------------- Property & Land Rental ----------------
+
+  List<Widget> _property(BuildContext context, AppUser user) {
+    final market = context.watch<MarketplaceController>();
+    final mine = market.propertiesByOwner(user.id);
+    final enquiries = market.enquiriesForOwner(user.id);
+
+    return [
+      QuickActionsGrid(
+        actions: [
+          ActionTile(
+            icon: Icons.add_home_work_outlined,
+            label: 'List Property',
+            onTap: () => _push(context, const CreatePropertyScreen()),
+          ),
+          ActionTile(
+            icon: Icons.home_work_outlined,
+            label: 'Browse',
+            onTap: () => _push(context, const PropertyMarketScreen()),
+          ),
+          ActionTile(
+            icon: Icons.mark_email_unread_outlined,
+            label: 'Enquiries',
+            onTap: () => _push(context, const PropertyMarketScreen()),
+          ),
+          ActionTile(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Rent Income',
+            onTap: () => _push(context, const PaymentsScreen()),
+          ),
+        ],
+      ),
+      const SizedBox(height: 22),
+      SectionHeader(
+        'My Properties',
+        actionLabel: mine.isEmpty ? null : 'Add new',
+        onAction: () => _push(context, const CreatePropertyScreen()),
+      ),
+      if (mine.isEmpty)
+        EmptyCard(
+          icon: Icons.home_work_outlined,
+          message:
+              'List agricultural land, a commercial building or residential '
+              'quarters to start receiving enquiries.',
+          actionLabel: 'List your first property',
+          onAction: () => _push(context, const CreatePropertyScreen()),
+        )
+      else
+        ...mine.take(4).map((p) => PropertyCard(property: p)),
+      const SizedBox(height: 22),
+      const SectionHeader('Enquiries Received'),
+      if (enquiries.isEmpty)
+        const EmptyCard(
+          icon: Icons.mark_email_unread_outlined,
+          message: 'No enquiries yet. Listings appear in the Property tab.',
+        )
+      else
+        ...enquiries.take(4).map((e) => EnquiryCard(enquiry: e, ownerView: true)),
     ];
   }
 

@@ -103,7 +103,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                       ),
                                       const SizedBox(height: 3),
                                       Text(
-                                        '${u.role.label} · ${u.district}',
+                                        '${u.roleLine} · ${u.district}',
                                         style: const TextStyle(
                                           fontSize: 12.5,
                                           color: AppColors.textSecondary,

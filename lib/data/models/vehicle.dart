@@ -1,15 +1,18 @@
 import 'enums.dart';
+import 'role_subtype.dart';
 
-/// vehicles table/collection — owned by transport providers.
+/// vehicles table/collection — owned by transport, taxi and rental providers.
 class Vehicle {
   final String id;
   final String ownerId;
   final String ownerName;
   final VehicleCategory category;
+  final RoleSubtype? subtype; // provider specialisation this vehicle serves
   final String vehicleType; // Tractor Trailer, Mini Truck, Tempo, Jeep, Bus
   final String registrationNumber;
-  final double capacityValue; // tonnes for goods, seats for passenger
-  final int ratePerKmPaise;
+  final double capacityValue; // tonnes for goods, seats for passenger/rental
+  final int ratePerKmPaise; // 0 for daily-rate rentals
+  final int ratePerDayPaise; // 0 for per-km categories
   final String district;
   final bool available;
 
@@ -21,24 +24,35 @@ class Vehicle {
     required this.vehicleType,
     required this.registrationNumber,
     required this.capacityValue,
-    required this.ratePerKmPaise,
     required this.district,
+    this.subtype,
+    this.ratePerKmPaise = 0,
+    this.ratePerDayPaise = 0,
     this.available = true,
   });
 
-  String get capacityLabel => category == VehicleCategory.goods
-      ? '${capacityValue.toStringAsFixed(1)} tonnes'
-      : '${capacityValue.toInt()} seats';
+  String get capacityLabel => switch (category) {
+    VehicleCategory.goods => '${capacityValue.toStringAsFixed(1)} tonnes',
+    _ => '${capacityValue.toInt()} seats',
+  };
+
+  /// Rentals are billed by the day, transport and taxis by the kilometre.
+  int get ratePaise =>
+      category.isDailyRate ? ratePerDayPaise : ratePerKmPaise;
+
+  String get rateUnit => category.isDailyRate ? 'day' : 'km';
 
   Vehicle copyWith({bool? available}) => Vehicle(
     id: id,
     ownerId: ownerId,
     ownerName: ownerName,
     category: category,
+    subtype: subtype,
     vehicleType: vehicleType,
     registrationNumber: registrationNumber,
     capacityValue: capacityValue,
     ratePerKmPaise: ratePerKmPaise,
+    ratePerDayPaise: ratePerDayPaise,
     district: district,
     available: available ?? this.available,
   );
@@ -48,10 +62,12 @@ class Vehicle {
     'owner_id': ownerId,
     'owner_name': ownerName,
     'category': category.name,
+    'subtype': subtype?.name,
     'vehicle_type': vehicleType,
     'registration_number': registrationNumber,
     'capacity_value': capacityValue,
     'rate_per_km_paise': ratePerKmPaise,
+    'rate_per_day_paise': ratePerDayPaise,
     'district': district,
     'available': available,
   };
@@ -61,10 +77,12 @@ class Vehicle {
     ownerId: m['owner_id'] as String? ?? '',
     ownerName: m['owner_name'] as String? ?? '',
     category: VehicleCategoryX.fromId(m['category'] as String? ?? 'goods'),
+    subtype: RoleSubtypeX.tryFromId(m['subtype'] as String?),
     vehicleType: m['vehicle_type'] as String? ?? '',
     registrationNumber: m['registration_number'] as String? ?? '',
     capacityValue: (m['capacity_value'] as num?)?.toDouble() ?? 0,
     ratePerKmPaise: (m['rate_per_km_paise'] as num?)?.toInt() ?? 0,
+    ratePerDayPaise: (m['rate_per_day_paise'] as num?)?.toInt() ?? 0,
     district: m['district'] as String? ?? '',
     available: m['available'] as bool? ?? true,
   );
@@ -81,7 +99,8 @@ class VehicleBooking {
   final String providerId;
   final String pickup;
   final String drop;
-  final double distanceKm;
+  final double distanceKm; // 0 for daily rentals
+  final int rentalDays; // 0 for per-km bookings
   final int farePaise;
   final DateTime scheduledAt;
   final BookingStatus status;
@@ -97,12 +116,18 @@ class VehicleBooking {
     required this.providerId,
     required this.pickup,
     required this.drop,
-    required this.distanceKm,
     required this.farePaise,
     required this.scheduledAt,
     required this.createdAt,
+    this.distanceKm = 0,
+    this.rentalDays = 0,
     this.status = BookingStatus.requested,
   });
+
+  /// "120 km" or "3 days" depending on how the booking is priced.
+  String get quantityLabel => category.isDailyRate
+      ? '$rentalDays ${rentalDays == 1 ? 'day' : 'days'}'
+      : '${distanceKm.toStringAsFixed(0)} km';
 
   VehicleBooking copyWith({BookingStatus? status}) => VehicleBooking(
     id: id,
@@ -115,6 +140,7 @@ class VehicleBooking {
     pickup: pickup,
     drop: drop,
     distanceKm: distanceKm,
+    rentalDays: rentalDays,
     farePaise: farePaise,
     scheduledAt: scheduledAt,
     status: status ?? this.status,
@@ -132,6 +158,7 @@ class VehicleBooking {
     'pickup': pickup,
     'drop': drop,
     'distance_km': distanceKm,
+    'rental_days': rentalDays,
     'fare_paise': farePaise,
     'scheduled_at': scheduledAt.toIso8601String(),
     'status': status.name,
@@ -149,6 +176,7 @@ class VehicleBooking {
     pickup: m['pickup'] as String? ?? '',
     drop: m['drop'] as String? ?? '',
     distanceKm: (m['distance_km'] as num?)?.toDouble() ?? 0,
+    rentalDays: (m['rental_days'] as num?)?.toInt() ?? 0,
     farePaise: (m['fare_paise'] as num?)?.toInt() ?? 0,
     scheduledAt:
         DateTime.tryParse(m['scheduled_at'] as String? ?? '') ?? DateTime.now(),

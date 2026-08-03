@@ -36,7 +36,7 @@ class JobDetailScreen extends StatelessWidget {
     final apps = market.applicationsForJob(job.id);
     final myApp =
         apps.where((a) => a.laborerId == user.id).firstOrNull;
-    final canApply = Rbac.can(user.role, Permission.applyToJobs) &&
+    final canApply = user.can(Permission.applyToJobs) &&
         job.status == JobStatus.open &&
         myApp == null;
 

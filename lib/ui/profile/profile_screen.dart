@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/money.dart';
 import '../../core/i18n/strings.dart';
 import '../../data/models/enums.dart';
+import '../../data/models/role_subtype.dart';
 import '../../state/marketplace_controller.dart';
 import '../../state/session_controller.dart';
 import '../onboarding/language_screen.dart';
@@ -102,6 +103,29 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (user.subtype != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                user.subtype!.icon,
+                                size: 13,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  user.subtype!.label,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -114,10 +138,16 @@ class ProfileScreen extends StatelessWidget {
               label: 'District',
               value: user.district,
             ),
+            if (user.subtype != null)
+              _Row(
+                icon: user.subtype!.icon,
+                label: 'Specialisation',
+                value: user.subtype!.label,
+              ),
             if (user.laborerType != null)
               _Row(
                 icon: Icons.work_outline,
-                label: 'Work type',
+                label: 'Crew size',
                 value: user.laborerType!.label,
               ),
             if (user.companyName != null)
@@ -244,7 +274,7 @@ class ProfileScreen extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
-                        '${u.role.label}${u.isPending ? ' · Pending' : ''}',
+                        '${u.roleLine}${u.isPending ? ' · Pending' : ''}',
                       ),
                       onTap: () async {
                         await session.switchTo(u);

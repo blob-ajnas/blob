@@ -15,7 +15,7 @@ class JobsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<SessionController>().user!;
     final market = context.watch<MarketplaceController>();
-    final canPost = Rbac.can(user.role, Permission.postJobs);
+    final canPost = user.can(Permission.postJobs);
 
     if (canPost) {
       final myJobs = market.jobsByPoster(user.id);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/rbac/permissions.dart';
+import '../../data/models/app_user.dart';
 import '../../data/models/enums.dart';
 import '../../state/session_controller.dart';
 import '../admin/admin_screen.dart';
@@ -10,6 +11,9 @@ import '../jobs/jobs_screen.dart';
 import '../market/market_screen.dart';
 import '../payments/payments_screen.dart';
 import '../profile/profile_screen.dart';
+import '../property/property_market_screen.dart';
+import '../transport/fleet_screen.dart';
+import '../transport/transport_booking_screen.dart';
 
 class NavDestination {
   final IconData icon;
@@ -37,7 +41,16 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  List<NavDestination> _destinationsFor(UserRole role) {
+  /// Bottom navigation is capped at five items, so tabs are chosen by
+  /// capability in priority order: home, the role's primary workspace, then
+  /// generic tabs, then profile. Everything that does not fit remains
+  /// reachable from the dashboard quick actions.
+  static const int _maxTabsBeforeProfile = 4;
+
+  List<NavDestination> _destinationsFor(AppUser user) {
+    final role = user.role;
+    bool can(Permission p) => user.can(p);
+
     final tabs = <NavDestination>[
       const NavDestination(
         icon: Icons.home_outlined,
@@ -47,6 +60,7 @@ class _AppShellState extends State<AppShell> {
       ),
     ];
 
+    // --- Primary workspace for the role ---
     if (role == UserRole.admin) {
       tabs.add(const NavDestination(
         icon: Icons.verified_user_outlined,
@@ -54,35 +68,84 @@ class _AppShellState extends State<AppShell> {
         labelKey: 'approvals',
         screen: AdminScreen(),
       ));
+    } else if (can(Permission.manageFleet) ||
+        can(Permission.manageRentals)) {
+      tabs.add(NavDestination(
+        icon: role == UserRole.vehicleRental
+            ? Icons.vpn_key_outlined
+            : role == UserRole.taxiService
+                ? Icons.local_taxi_outlined
+                : Icons.local_shipping_outlined,
+        activeIcon: role == UserRole.vehicleRental
+            ? Icons.vpn_key
+            : role == UserRole.taxiService
+                ? Icons.local_taxi
+                : Icons.local_shipping,
+        labelKey: role == UserRole.vehicleRental ? 'rentals' : 'fleet',
+        screen: const FleetScreen(),
+      ));
+    } else if (role == UserRole.propertyOwner) {
+      tabs.add(const NavDestination(
+        icon: Icons.home_work_outlined,
+        activeIcon: Icons.home_work,
+        labelKey: 'property',
+        screen: PropertyMarketScreen(),
+      ));
     }
 
-    if (Rbac.can(role, Permission.browseMarket)) {
-      tabs.add(const NavDestination(
+    // --- Generic tabs, added while slots remain ---
+    void offer(bool allowed, NavDestination destination) {
+      if (allowed && tabs.length < _maxTabsBeforeProfile) {
+        tabs.add(destination);
+      }
+    }
+
+    offer(
+      can(Permission.browseMarket),
+      const NavDestination(
         icon: Icons.storefront_outlined,
         activeIcon: Icons.storefront,
         labelKey: 'market',
         screen: MarketScreen(),
-      ));
-    }
-
-    if (Rbac.can(role, Permission.postJobs) ||
-        Rbac.can(role, Permission.applyToJobs)) {
-      tabs.add(const NavDestination(
+      ),
+    );
+    offer(
+      can(Permission.postJobs) || can(Permission.applyToJobs),
+      const NavDestination(
         icon: Icons.work_outline,
         activeIcon: Icons.work,
         labelKey: 'jobs',
         screen: JobsScreen(),
-      ));
-    }
-
-    if (Rbac.can(role, Permission.viewPaymentTracker)) {
-      tabs.add(const NavDestination(
+      ),
+    );
+    offer(
+      can(Permission.viewPaymentTracker),
+      const NavDestination(
         icon: Icons.account_balance_wallet_outlined,
         activeIcon: Icons.account_balance_wallet,
         labelKey: 'payments',
         screen: PaymentsScreen(),
-      ));
-    }
+      ),
+    );
+    offer(
+      role != UserRole.propertyOwner &&
+          (can(Permission.browseProperty) || can(Permission.listProperty)),
+      const NavDestination(
+        icon: Icons.home_work_outlined,
+        activeIcon: Icons.home_work,
+        labelKey: 'property',
+        screen: PropertyMarketScreen(),
+      ),
+    );
+    offer(
+      can(Permission.bookTaxi),
+      const NavDestination(
+        icon: Icons.local_taxi_outlined,
+        activeIcon: Icons.local_taxi,
+        labelKey: 'rides',
+        screen: TransportBookingScreen.taxi(),
+      ),
+    );
 
     tabs.add(const NavDestination(
       icon: Icons.person_outline,
@@ -100,7 +163,7 @@ class _AppShellState extends State<AppShell> {
     final user = session.user;
     if (user == null) return const SizedBox.shrink();
 
-    final destinations = _destinationsFor(user.role);
+    final destinations = _destinationsFor(user);
     final safeIndex = _index.clamp(0, destinations.length - 1);
 
     return Scaffold(
@@ -109,6 +172,7 @@ class _AppShellState extends State<AppShell> {
         children: destinations.map((d) => d.screen).toList(),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: safeIndex,
         onTap: (i) => setState(() => _index = i),
         items: destinations

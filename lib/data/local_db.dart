@@ -14,6 +14,8 @@ class LocalDb {
   static const String vehicles = 'vehicles';
   static const String bookings = 'bookings';
   static const String investments = 'investments';
+  static const String properties = 'properties';
+  static const String enquiries = 'enquiries';
   static const String settings = 'settings';
 
   static const List<String> _boxes = [
@@ -25,6 +27,8 @@ class LocalDb {
     vehicles,
     bookings,
     investments,
+    properties,
+    enquiries,
     settings,
   ];
 

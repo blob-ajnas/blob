@@ -5,6 +5,7 @@ import '../core/i18n/strings.dart';
 import '../data/local_db.dart';
 import '../data/models/app_user.dart';
 import '../data/models/enums.dart';
+import '../data/models/role_subtype.dart';
 import '../services/otp_service.dart';
 
 /// Owns language preference, OTP flow state and the persistent session.
@@ -113,6 +114,7 @@ class SessionController extends ChangeNotifier {
     required String name,
     required UserRole role,
     required String district,
+    RoleSubtype? subtype,
     LaborerType? laborerType,
     String? companyName,
     String? registrationNo,
@@ -125,6 +127,7 @@ class SessionController extends ChangeNotifier {
       countryCode: _pendingCountryCode,
       name: name.trim(),
       role: role,
+      subtype: subtype ?? RoleSubtypeX.defaultFor(role),
       district: district.trim(),
       laborerType: laborerType,
       companyName: companyName,

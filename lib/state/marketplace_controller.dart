@@ -8,6 +8,8 @@ import '../data/models/enums.dart';
 import '../data/models/job.dart';
 import '../data/models/ledger.dart';
 import '../data/models/listing.dart';
+import '../data/models/property.dart';
+import '../data/models/role_subtype.dart';
 import '../data/models/vehicle.dart';
 import '../services/payment_gateway.dart';
 
@@ -74,6 +76,20 @@ class MarketplaceController extends ChangeNotifier {
   List<Investment> get investments =>
       _db.all(LocalDb.investments).map(Investment.fromMap).toList();
 
+  List<PropertyListing> get properties {
+    final items =
+        _db.all(LocalDb.properties).map(PropertyListing.fromMap).toList();
+    items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return items;
+  }
+
+  List<PropertyEnquiry> get enquiries {
+    final items =
+        _db.all(LocalDb.enquiries).map(PropertyEnquiry.fromMap).toList();
+    items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return items;
+  }
+
   // ---------------- Scoped queries (simple filters, sorted in memory) ----
 
   List<Listing> listingsFor(ListingChannel channel) => listings
@@ -102,9 +118,50 @@ class MarketplaceController extends ChangeNotifier {
   List<Vehicle> vehiclesByOwner(String ownerId) =>
       vehicles.where((v) => v.ownerId == ownerId).toList();
 
-  List<Vehicle> availableVehicles(VehicleCategory category) => vehicles
-      .where((v) => v.category == category && v.available)
+  List<Vehicle> availableVehicles(
+    VehicleCategory category, {
+    RoleSubtype? subtype,
+  }) =>
+      vehicles
+          .where((v) =>
+              v.category == category &&
+              v.available &&
+              (subtype == null || v.subtype == subtype))
+          .toList();
+
+  /// Distinct specialisations that currently have stock in a category.
+  List<RoleSubtype> offeredSubtypes(VehicleCategory category) {
+    final seen = <RoleSubtype>[];
+    for (final v in availableVehicles(category)) {
+      final s = v.subtype;
+      if (s != null && !seen.contains(s)) seen.add(s);
+    }
+    seen.sort((a, b) => a.index.compareTo(b.index));
+    return seen;
+  }
+
+  List<PropertyListing> propertiesByOwner(String ownerId) =>
+      properties.where((p) => p.ownerId == ownerId).toList();
+
+  List<PropertyListing> activeProperties({RoleSubtype? kind}) => properties
+      .where((p) =>
+          p.status == ListingStatus.active && (kind == null || p.kind == kind))
       .toList();
+
+  List<RoleSubtype> get offeredPropertyKinds {
+    final seen = <RoleSubtype>[];
+    for (final p in activeProperties()) {
+      if (!seen.contains(p.kind)) seen.add(p.kind);
+    }
+    seen.sort((a, b) => a.index.compareTo(b.index));
+    return seen;
+  }
+
+  List<PropertyEnquiry> enquiriesForOwner(String ownerId) =>
+      enquiries.where((e) => e.ownerId == ownerId).toList();
+
+  List<PropertyEnquiry> enquiriesBySeeker(String seekerId) =>
+      enquiries.where((e) => e.seekerId == seekerId).toList();
 
   List<VehicleBooking> bookingsForUser(String userId) => bookings
       .where((b) => b.requesterId == userId || b.providerId == userId)
@@ -375,17 +432,20 @@ class MarketplaceController extends ChangeNotifier {
     required String vehicleType,
     required String registrationNumber,
     required double capacityValue,
-    required int ratePerKmPaise,
+    required int ratePaise,
+    RoleSubtype? subtype,
   }) async {
     final vehicle = Vehicle(
       id: _uuid.v4(),
       ownerId: owner.id,
       ownerName: owner.name,
       category: category,
+      subtype: subtype ?? owner.subtype,
       vehicleType: vehicleType,
       registrationNumber: registrationNumber,
       capacityValue: capacityValue,
-      ratePerKmPaise: ratePerKmPaise,
+      ratePerKmPaise: category.isDailyRate ? 0 : ratePaise,
+      ratePerDayPaise: category.isDailyRate ? ratePaise : 0,
       district: owner.district,
     );
     await _db.put(LocalDb.vehicles, vehicle.id, vehicle.toMap());
@@ -398,15 +458,22 @@ class MarketplaceController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Books a goods trip, a taxi ride or a self-drive rental. Pass
+  /// [distanceKm] for per-km categories, [rentalDays] for daily rentals.
   Future<VehicleBooking> bookVehicle({
     required Vehicle vehicle,
     required AppUser requester,
     required String pickup,
     required String drop,
-    required double distanceKm,
     required DateTime scheduledAt,
+    double distanceKm = 0,
+    int rentalDays = 0,
   }) async {
-    final fare = (vehicle.ratePerKmPaise * distanceKm).round();
+    final isRental = vehicle.category.isDailyRate;
+    final fare = isRental
+        ? vehicle.ratePerDayPaise * rentalDays
+        : (vehicle.ratePerKmPaise * distanceKm).round();
+
     final booking = VehicleBooking(
       id: _uuid.v4(),
       vehicleId: vehicle.id,
@@ -417,7 +484,8 @@ class MarketplaceController extends ChangeNotifier {
       providerId: vehicle.ownerId,
       pickup: pickup,
       drop: drop,
-      distanceKm: distanceKm,
+      distanceKm: isRental ? 0 : distanceKm,
+      rentalDays: isRental ? rentalDays : 0,
       farePaise: fare,
       scheduledAt: scheduledAt,
       createdAt: DateTime.now(),
@@ -430,9 +498,15 @@ class MarketplaceController extends ChangeNotifier {
       payeeId: vehicle.ownerId,
       payeeName: vehicle.ownerName,
       amountPaise: fare,
-      type: LedgerType.transportFare,
+      type: switch (vehicle.category) {
+        VehicleCategory.goods => LedgerType.transportFare,
+        VehicleCategory.passenger => LedgerType.taxiFare,
+        VehicleCategory.rental => LedgerType.vehicleRentFee,
+      },
       reference: booking.id,
-      note: '$pickup to $drop · ${distanceKm.toStringAsFixed(0)} km',
+      note: isRental
+          ? '${vehicle.vehicleType} · ${booking.quantityLabel}'
+          : '$pickup to $drop · ${booking.quantityLabel}',
     );
     notifyListeners();
     return booking;
@@ -477,6 +551,101 @@ class MarketplaceController extends ChangeNotifier {
       reference: project.id,
       note: 'Investment · ${project.cropName}',
     );
+    notifyListeners();
+  }
+
+  // ---------------- Property, land & rental ----------------
+
+  Future<PropertyListing> createProperty({
+    required AppUser owner,
+    required RoleSubtype kind,
+    required String title,
+    required String description,
+    required double areaValue,
+    required int rentPerMonthPaise,
+    required int depositPaise,
+    required String locality,
+    required int leaseMonthsMin,
+    required DateTime availableFrom,
+  }) async {
+    final property = PropertyListing(
+      id: _uuid.v4(),
+      ownerId: owner.id,
+      ownerName: owner.name,
+      kind: kind,
+      title: title,
+      description: description,
+      areaValue: areaValue,
+      rentPerMonthPaise: rentPerMonthPaise,
+      depositPaise: depositPaise,
+      locality: locality,
+      district: owner.district,
+      leaseMonthsMin: leaseMonthsMin,
+      availableFrom: availableFrom,
+      createdAt: DateTime.now(),
+    );
+    await _db.put(LocalDb.properties, property.id, property.toMap());
+    notifyListeners();
+    return property;
+  }
+
+  Future<void> updatePropertyStatus(
+    PropertyListing property,
+    ListingStatus status,
+  ) async {
+    final updated = property.copyWith(status: status);
+    await _db.put(LocalDb.properties, updated.id, updated.toMap());
+    notifyListeners();
+  }
+
+  Future<PropertyEnquiry> raiseEnquiry({
+    required PropertyListing property,
+    required AppUser seeker,
+    required int months,
+    required String message,
+  }) async {
+    final enquiry = PropertyEnquiry(
+      id: _uuid.v4(),
+      propertyId: property.id,
+      propertyTitle: property.title,
+      ownerId: property.ownerId,
+      seekerId: seeker.id,
+      seekerName: seeker.name,
+      months: months,
+      message: message,
+      createdAt: DateTime.now(),
+    );
+    await _db.put(LocalDb.enquiries, enquiry.id, enquiry.toMap());
+    notifyListeners();
+    return enquiry;
+  }
+
+  /// Agreeing a lease reserves the property and raises the first month's
+  /// rent plus deposit as a payable.
+  Future<void> setEnquiryStatus(
+    PropertyEnquiry enquiry,
+    EnquiryStatus status,
+  ) async {
+    final updated = enquiry.copyWith(status: status);
+    await _db.put(LocalDb.enquiries, updated.id, updated.toMap());
+
+    if (status == EnquiryStatus.agreed) {
+      final property =
+          properties.where((p) => p.id == enquiry.propertyId).firstOrNull;
+      if (property != null) {
+        await updatePropertyStatus(property, ListingStatus.reserved);
+        await _addLedger(
+          payerId: enquiry.seekerId,
+          payerName: enquiry.seekerName,
+          payeeId: property.ownerId,
+          payeeName: property.ownerName,
+          amountPaise: property.rentPerMonthPaise + property.depositPaise,
+          type: LedgerType.propertyRent,
+          reference: property.id,
+          note: '${property.title} · first month + deposit',
+        );
+      }
+    }
     notifyListeners();
   }
 

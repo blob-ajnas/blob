@@ -28,10 +28,10 @@ class ListingDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<SessionController>().user!;
     final market = context.watch<MarketplaceController>();
-    final canBuy = Rbac.can(user.role, Permission.buyProducts) &&
+    final canBuy = user.can(Permission.buyProducts) &&
         listing.ownerId != user.id &&
         listing.status == ListingStatus.active;
-    final canInvest = Rbac.can(user.role, Permission.investInProjects) &&
+    final canInvest = user.can(Permission.investInProjects) &&
         listing.status == ListingStatus.active;
 
     return Scaffold(

@@ -43,16 +43,16 @@ class _MarketScreenState extends State<MarketScreen> {
           .toList();
     }
 
-    final canBuy = Rbac.can(user.role, Permission.buyProducts);
-    final canInvest = Rbac.can(user.role, Permission.investInProjects);
-    final isBroker = Rbac.can(user.role, Permission.facilitateDeals);
+    final canBuy = user.can(Permission.buyProducts);
+    final canInvest = user.can(Permission.investInProjects);
+    final isBroker = user.can(Permission.facilitateDeals);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Market'),
         actions: [
-          if (Rbac.can(user.role, Permission.listCrops) ||
-              Rbac.can(user.role, Permission.resellToExporters))
+          if (user.can(Permission.listCrops) ||
+              user.can(Permission.resellToExporters))
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
               tooltip: 'New listing',

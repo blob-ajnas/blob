@@ -1,4 +1,6 @@
+import '../../core/rbac/permissions.dart';
 import 'enums.dart';
+import 'role_subtype.dart';
 
 /// users table/collection
 class AppUser {
@@ -7,6 +9,7 @@ class AppUser {
   final String countryCode; // e.g. +91
   final String name;
   final UserRole role;
+  final RoleSubtype? subtype; // role specialisation, null for single-shape roles
   final LaborerType? laborerType; // only for UserRole.laborer
   final String? companyName; // exporter / investor entity
   final String? registrationNo; // exporter company registration
@@ -24,6 +27,7 @@ class AppUser {
     required this.role,
     required this.district,
     required this.createdAt,
+    this.subtype,
     this.laborerType,
     this.companyName,
     this.registrationNo,
@@ -35,9 +39,20 @@ class AppUser {
   bool get isApproved => verificationStatus == VerificationStatus.approved;
   bool get isPending => verificationStatus == VerificationStatus.pending;
 
+  /// Capability check that accounts for the user's specialisation.
+  bool can(Permission permission) =>
+      Rbac.can(role, permission, subtype: subtype);
+
+  Set<Permission> get permissions => Rbac.of(role, subtype: subtype);
+
+  /// Role plus specialisation, e.g. "Buyer · Retail Market Buyer".
+  String get roleLine =>
+      subtype == null ? role.label : '${role.label} · ${subtype!.label}';
+
   AppUser copyWith({
     String? name,
     UserRole? role,
+    RoleSubtype? subtype,
     LaborerType? laborerType,
     String? companyName,
     String? registrationNo,
@@ -52,6 +67,7 @@ class AppUser {
       countryCode: countryCode,
       name: name ?? this.name,
       role: role ?? this.role,
+      subtype: subtype ?? this.subtype,
       laborerType: laborerType ?? this.laborerType,
       companyName: companyName ?? this.companyName,
       registrationNo: registrationNo ?? this.registrationNo,
@@ -69,6 +85,7 @@ class AppUser {
     'country_code': countryCode,
     'name': name,
     'role': role.name,
+    'subtype': subtype?.name,
     'laborer_type': laborerType?.name,
     'company_name': companyName,
     'registration_no': registrationNo,
@@ -85,6 +102,7 @@ class AppUser {
     countryCode: m['country_code'] as String? ?? '+91',
     name: m['name'] as String? ?? 'User',
     role: UserRoleX.fromId(m['role'] as String? ?? 'buyer'),
+    subtype: RoleSubtypeX.tryFromId(m['subtype'] as String?),
     laborerType: m['laborer_type'] == null
         ? null
         : LaborerTypeX.fromId(m['laborer_type'] as String),

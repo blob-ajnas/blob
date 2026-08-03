@@ -3,6 +3,8 @@ import 'models/app_user.dart';
 import 'models/enums.dart';
 import 'models/job.dart';
 import 'models/listing.dart';
+import 'models/property.dart';
+import 'models/role_subtype.dart';
 import 'models/vehicle.dart';
 
 /// Seeds demo marketplace data on first launch so every role dashboard
@@ -10,7 +12,7 @@ import 'models/vehicle.dart';
 class Seed {
   Seed._();
 
-  static const _kSeeded = 'seed_v1';
+  static const _kSeeded = 'seed_v2';
 
   static Future<void> ensure() async {
     final db = LocalDb.instance;
@@ -43,8 +45,19 @@ class Seed {
         countryCode: '+91',
         name: 'Suresh Traders',
         role: UserRole.buyer,
+        subtype: RoleSubtype.wholesaleHarvestBuyer,
         district: 'Bengaluru Rural',
         createdAt: now.subtract(const Duration(days: 75)),
+      ),
+      AppUser(
+        id: 'u_buyer_2',
+        phone: '+919845020002',
+        countryCode: '+91',
+        name: 'Geetha Provisions',
+        role: UserRole.buyer,
+        subtype: RoleSubtype.retailMarketBuyer,
+        district: 'Mysuru',
+        createdAt: now.subtract(const Duration(days: 44)),
       ),
       AppUser(
         id: 'u_broker_1',
@@ -52,6 +65,7 @@ class Seed {
         countryCode: '+91',
         name: 'Kiran Shetty',
         role: UserRole.broker,
+        subtype: RoleSubtype.cropCommissionDeal,
         district: 'Mysuru',
         verificationStatus: VerificationStatus.approved,
         createdAt: now.subtract(const Duration(days: 50)),
@@ -62,6 +76,7 @@ class Seed {
         countryCode: '+91',
         name: 'Anitha Rao',
         role: UserRole.broker,
+        subtype: RoleSubtype.labourAgentContract,
         district: 'Tumakuru',
         verificationStatus: VerificationStatus.pending,
         createdAt: now.subtract(const Duration(days: 3)),
@@ -72,6 +87,7 @@ class Seed {
         countryCode: '+91',
         name: 'Manjunath K',
         role: UserRole.laborer,
+        subtype: RoleSubtype.singleAndGroup,
         laborerType: LaborerType.singleWorker,
         district: 'Mandya',
         createdAt: now.subtract(const Duration(days: 40)),
@@ -82,9 +98,32 @@ class Seed {
         countryCode: '+91',
         name: 'Shivamma Group',
         role: UserRole.laborer,
+        subtype: RoleSubtype.singleAndGroup,
         laborerType: LaborerType.groupWork,
         district: 'Mandya',
         createdAt: now.subtract(const Duration(days: 35)),
+      ),
+      AppUser(
+        id: 'u_laborer_3',
+        phone: '+919845040003',
+        countryCode: '+91',
+        name: 'Basavaraju N',
+        role: UserRole.laborer,
+        subtype: RoleSubtype.dailyHarvestWork,
+        laborerType: LaborerType.groupWork,
+        district: 'Hassan',
+        createdAt: now.subtract(const Duration(days: 28)),
+      ),
+      AppUser(
+        id: 'u_laborer_4',
+        phone: '+919845040004',
+        countryCode: '+91',
+        name: 'Prakash Tractor Works',
+        role: UserRole.laborer,
+        subtype: RoleSubtype.skilledFieldOperator,
+        laborerType: LaborerType.singleWorker,
+        district: 'Mandya',
+        createdAt: now.subtract(const Duration(days: 22)),
       ),
       AppUser(
         id: 'u_transport_1',
@@ -92,8 +131,62 @@ class Seed {
         countryCode: '+91',
         name: 'Vinayaka Logistics',
         role: UserRole.transport,
+        subtype: RoleSubtype.heavyTransportTruck,
         district: 'Mysuru',
         createdAt: now.subtract(const Duration(days: 55)),
+      ),
+      AppUser(
+        id: 'u_transport_2',
+        phone: '+919845050002',
+        countryCode: '+91',
+        name: 'Chamundi Pickup Service',
+        role: UserRole.transport,
+        subtype: RoleSubtype.pickupLightCommercial,
+        district: 'Mandya',
+        createdAt: now.subtract(const Duration(days: 26)),
+      ),
+      AppUser(
+        id: 'u_taxi_1',
+        phone: '+919845060001',
+        countryCode: '+91',
+        name: 'Mysuru City Cabs',
+        role: UserRole.taxiService,
+        subtype: RoleSubtype.localAutoCab,
+        district: 'Mysuru',
+        verificationStatus: VerificationStatus.approved,
+        createdAt: now.subtract(const Duration(days: 33)),
+      ),
+      AppUser(
+        id: 'u_taxi_2',
+        phone: '+919845060002',
+        countryCode: '+91',
+        name: 'Kaveri Travels',
+        role: UserRole.taxiService,
+        subtype: RoleSubtype.travellerBus,
+        district: 'Mandya',
+        verificationStatus: VerificationStatus.pending,
+        createdAt: now.subtract(const Duration(days: 1)),
+      ),
+      AppUser(
+        id: 'u_rental_1',
+        phone: '+919845070001',
+        countryCode: '+91',
+        name: 'Hassan Wheels Rentals',
+        role: UserRole.vehicleRental,
+        subtype: RoleSubtype.carRental,
+        district: 'Hassan',
+        verificationStatus: VerificationStatus.approved,
+        createdAt: now.subtract(const Duration(days: 18)),
+      ),
+      AppUser(
+        id: 'u_property_1',
+        phone: '+919845080001',
+        countryCode: '+91',
+        name: 'Nanjundaswamy Estates',
+        role: UserRole.propertyOwner,
+        subtype: RoleSubtype.agricultureLandLease,
+        district: 'Mandya',
+        createdAt: now.subtract(const Duration(days: 47)),
       ),
       AppUser(
         id: 'u_investor_1',
@@ -101,6 +194,7 @@ class Seed {
         countryCode: '+65',
         name: 'Daniel Tan',
         role: UserRole.foreignInvestor,
+        subtype: RoleSubtype.farmInfrastructureEquity,
         companyName: 'GreenAsia Capital',
         country: 'Singapore',
         district: 'Bengaluru Urban',
@@ -112,6 +206,7 @@ class Seed {
         countryCode: '+971',
         name: 'Al Noor Foods',
         role: UserRole.globalExporter,
+        subtype: RoleSubtype.internationalExportBatch,
         companyName: 'Al Noor Foods FZE',
         registrationNo: 'FZE-88213',
         country: 'United Arab Emirates',
@@ -125,6 +220,7 @@ class Seed {
         countryCode: '+44',
         name: 'Britannia Produce',
         role: UserRole.globalExporter,
+        subtype: RoleSubtype.interStateWholesaleExport,
         companyName: 'Britannia Produce Ltd',
         registrationNo: 'UK-4471902',
         country: 'United Kingdom',
@@ -283,22 +379,38 @@ class Seed {
     }
 
     final vehicles = <Vehicle>[
+      // ---- Transport goods: pickup / light commercial ----
       Vehicle(
         id: 'v_1',
-        ownerId: 'u_transport_1',
-        ownerName: 'Vinayaka Logistics',
+        ownerId: 'u_transport_2',
+        ownerName: 'Chamundi Pickup Service',
         category: VehicleCategory.goods,
+        subtype: RoleSubtype.pickupLightCommercial,
         vehicleType: 'Tata 407 Mini Truck',
-        registrationNumber: 'KA 09 C 1234',
+        registrationNumber: 'KA 11 C 1234',
         capacityValue: 2.5,
         ratePerKmPaise: 2800,
-        district: 'Mysuru',
+        district: 'Mandya',
       ),
       Vehicle(
         id: 'v_2',
+        ownerId: 'u_transport_2',
+        ownerName: 'Chamundi Pickup Service',
+        category: VehicleCategory.goods,
+        subtype: RoleSubtype.pickupLightCommercial,
+        vehicleType: 'Mahindra Bolero Pickup',
+        registrationNumber: 'KA 11 C 7788',
+        capacityValue: 1.5,
+        ratePerKmPaise: 2100,
+        district: 'Mandya',
+      ),
+      // ---- Transport goods: heavy trucks ----
+      Vehicle(
+        id: 'v_3',
         ownerId: 'u_transport_1',
         ownerName: 'Vinayaka Logistics',
         category: VehicleCategory.goods,
+        subtype: RoleSubtype.heavyTransportTruck,
         vehicleType: 'Ashok Leyland 10-Wheeler',
         registrationNumber: 'KA 09 D 8890',
         capacityValue: 16,
@@ -306,31 +418,174 @@ class Seed {
         district: 'Mysuru',
       ),
       Vehicle(
-        id: 'v_3',
-        ownerId: 'u_transport_1',
-        ownerName: 'Vinayaka Logistics',
-        category: VehicleCategory.passenger,
-        vehicleType: 'Force Traveller',
-        registrationNumber: 'KA 09 E 4412',
-        capacityValue: 14,
-        ratePerKmPaise: 2200,
-        district: 'Mysuru',
-      ),
-      Vehicle(
         id: 'v_4',
         ownerId: 'u_transport_1',
         ownerName: 'Vinayaka Logistics',
-        category: VehicleCategory.passenger,
-        vehicleType: 'Mahindra Bolero Jeep',
-        registrationNumber: 'KA 09 F 7781',
-        capacityValue: 7,
-        ratePerKmPaise: 1600,
+        category: VehicleCategory.goods,
+        subtype: RoleSubtype.heavyTransportTruck,
+        vehicleType: 'Tata Signa Trailer',
+        registrationNumber: 'KA 09 D 9921',
+        capacityValue: 28,
+        ratePerKmPaise: 9200,
         district: 'Mysuru',
+      ),
+      // ---- Taxi service ----
+      Vehicle(
+        id: 'v_5',
+        ownerId: 'u_taxi_1',
+        ownerName: 'Mysuru City Cabs',
+        category: VehicleCategory.passenger,
+        subtype: RoleSubtype.localAutoCab,
+        vehicleType: 'Bajaj RE Auto Rickshaw',
+        registrationNumber: 'KA 09 M 2201',
+        capacityValue: 3,
+        ratePerKmPaise: 1800,
+        district: 'Mysuru',
+      ),
+      Vehicle(
+        id: 'v_6',
+        ownerId: 'u_taxi_1',
+        ownerName: 'Mysuru City Cabs',
+        category: VehicleCategory.passenger,
+        subtype: RoleSubtype.outstationCab,
+        vehicleType: 'Toyota Etios Sedan',
+        registrationNumber: 'KA 09 N 5510',
+        capacityValue: 4,
+        ratePerKmPaise: 2400,
+        district: 'Mysuru',
+      ),
+      Vehicle(
+        id: 'v_7',
+        ownerId: 'u_taxi_1',
+        ownerName: 'Mysuru City Cabs',
+        category: VehicleCategory.passenger,
+        subtype: RoleSubtype.travellerBus,
+        vehicleType: 'Force Traveller 26-Seater',
+        registrationNumber: 'KA 09 E 4412',
+        capacityValue: 26,
+        ratePerKmPaise: 3600,
+        district: 'Mysuru',
+      ),
+      // ---- Vehicle rent (self-drive, billed per day) ----
+      Vehicle(
+        id: 'v_8',
+        ownerId: 'u_rental_1',
+        ownerName: 'Hassan Wheels Rentals',
+        category: VehicleCategory.rental,
+        subtype: RoleSubtype.carRental,
+        vehicleType: 'Maruti Swift Dzire',
+        registrationNumber: 'KA 13 R 3390',
+        capacityValue: 5,
+        ratePerDayPaise: 180000,
+        district: 'Hassan',
+      ),
+      Vehicle(
+        id: 'v_9',
+        ownerId: 'u_rental_1',
+        ownerName: 'Hassan Wheels Rentals',
+        category: VehicleCategory.rental,
+        subtype: RoleSubtype.jeepSuvRental,
+        vehicleType: 'Mahindra Bolero Neo',
+        registrationNumber: 'KA 13 R 4412',
+        capacityValue: 7,
+        ratePerDayPaise: 250000,
+        district: 'Hassan',
+      ),
+      Vehicle(
+        id: 'v_10',
+        ownerId: 'u_rental_1',
+        ownerName: 'Hassan Wheels Rentals',
+        category: VehicleCategory.rental,
+        subtype: RoleSubtype.bikeScooterRental,
+        vehicleType: 'Honda Activa 6G',
+        registrationNumber: 'KA 13 S 9087',
+        capacityValue: 2,
+        ratePerDayPaise: 45000,
+        district: 'Hassan',
       ),
     ];
 
     for (final v in vehicles) {
       await db.put(LocalDb.vehicles, v.id, v.toMap());
+    }
+
+    final properties = <PropertyListing>[
+      PropertyListing(
+        id: 'p_1',
+        ownerId: 'u_property_1',
+        ownerName: 'Nanjundaswamy Estates',
+        kind: RoleSubtype.agricultureLandLease,
+        title: '6 acre irrigated paddy land',
+        description:
+            'Canal fed with borewell backup, tractor accessible, fenced. '
+            'Suitable for paddy, sugarcane or vegetables.',
+        areaValue: 6,
+        rentPerMonthPaise: 3500000,
+        depositPaise: 10000000,
+        locality: 'Keragodu Road',
+        district: 'Mandya',
+        leaseMonthsMin: 24,
+        availableFrom: now.add(const Duration(days: 14)),
+        createdAt: now.subtract(const Duration(days: 6)),
+      ),
+      PropertyListing(
+        id: 'p_2',
+        ownerId: 'u_property_1',
+        ownerName: 'Nanjundaswamy Estates',
+        kind: RoleSubtype.commercialBuilding,
+        title: 'Godown beside APMC yard',
+        description:
+            'RCC godown with loading ramp, 3-phase power and night security. '
+            'Ideal for grading and short-term storage.',
+        areaValue: 4000,
+        rentPerMonthPaise: 4500000,
+        depositPaise: 27000000,
+        locality: 'APMC Yard',
+        district: 'Mandya',
+        leaseMonthsMin: 11,
+        availableFrom: now.add(const Duration(days: 3)),
+        createdAt: now.subtract(const Duration(days: 3)),
+      ),
+      PropertyListing(
+        id: 'p_3',
+        ownerId: 'u_property_1',
+        ownerName: 'Nanjundaswamy Estates',
+        kind: RoleSubtype.residentialQuarters,
+        title: 'Worker quarters — 4 rooms',
+        description:
+            'Four rooms with shared kitchen, bore water and toilet block. '
+            'Walking distance from the fields.',
+        areaValue: 1200,
+        rentPerMonthPaise: 1200000,
+        depositPaise: 2400000,
+        locality: 'Duddagere',
+        district: 'Mandya',
+        leaseMonthsMin: 6,
+        availableFrom: now,
+        createdAt: now.subtract(const Duration(days: 8)),
+      ),
+      PropertyListing(
+        id: 'p_4',
+        ownerId: 'u_landowner_2',
+        ownerName: 'Lakshmamma B',
+        kind: RoleSubtype.agricultureLandLease,
+        title: 'Coffee estate block on lease',
+        description:
+            'Shade grown Arabica block with existing plants, pulping shed '
+            'and labour lines included.',
+        areaValue: 3.5,
+        rentPerMonthPaise: 5500000,
+        depositPaise: 11000000,
+        locality: 'Sakleshpur',
+        district: 'Hassan',
+        leaseMonthsMin: 36,
+        availableFrom: now.add(const Duration(days: 30)),
+        createdAt: now.subtract(const Duration(days: 5)),
+      ),
+    ];
+
+    for (final p in properties) {
+      await db.put(LocalDb.properties, p.id, p.toMap());
     }
 
     await db.setSetting(_kSeeded, true);

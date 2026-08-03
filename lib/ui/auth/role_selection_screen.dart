@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/enums.dart';
+import '../../data/models/role_subtype.dart';
 import '../../state/session_controller.dart';
 import '../shell/app_shell.dart';
 import '../widgets/common.dart';
@@ -24,11 +25,17 @@ const kRoleMeta = <RoleMeta>[
   RoleMeta(UserRole.broker, Icons.handshake,
       'Facilitate deals and earn commission'),
   RoleMeta(UserRole.transport, Icons.local_shipping,
-      'Offer goods and passenger vehicles'),
+      'Move harvest and goods with pickups or heavy trucks'),
   RoleMeta(UserRole.foreignInvestor, Icons.trending_up,
       'Invest in local agricultural projects'),
   RoleMeta(UserRole.globalExporter, Icons.public,
       'Registered company buying and shipping produce'),
+  RoleMeta(UserRole.taxiService, Icons.local_taxi,
+      'Run autos, cabs or traveller buses for passengers'),
+  RoleMeta(UserRole.vehicleRental, Icons.vpn_key,
+      'Rent out cars, jeeps, SUVs, bikes and scooters'),
+  RoleMeta(UserRole.propertyOwner, Icons.home_work,
+      'Lease farm land, commercial space or housing'),
 ];
 
 class RoleSelectionScreen extends StatefulWidget {
@@ -190,11 +197,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _registration = TextEditingController();
   final _country = TextEditingController();
   LaborerType _laborerType = LaborerType.singleWorker;
+  RoleSubtype? _subtype;
   bool _saving = false;
 
   bool get _isLaborer => widget.role == UserRole.laborer;
   bool get _isExporter => widget.role == UserRole.globalExporter;
   bool get _isInvestor => widget.role == UserRole.foreignInvestor;
+
+  /// Taxi and self-drive rental operators need a commercial permit on file.
+  bool get _isCommercialOperator =>
+      widget.role == UserRole.taxiService ||
+      widget.role == UserRole.vehicleRental;
+
+  /// Single vs group only matters for the general labour specialisation.
+  bool get _needsCrewSize =>
+      _isLaborer && _subtype == RoleSubtype.singleAndGroup;
+
+  @override
+  void initState() {
+    super.initState();
+    _subtype = RoleSubtypeX.defaultFor(widget.role);
+  }
 
   @override
   void dispose() {
@@ -213,8 +236,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     await session.register(
       name: _name.text,
       role: widget.role,
+      subtype: _subtype,
       district: _district.text,
-      laborerType: _isLaborer ? _laborerType : null,
+      laborerType: _needsCrewSize ? _laborerType : null,
       companyName: _company.text.trim().isEmpty ? null : _company.text.trim(),
       registrationNo:
           _registration.text.trim().isEmpty ? null : _registration.text.trim(),
@@ -274,10 +298,41 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   validator: (v) =>
                       (v?.trim().isEmpty ?? true) ? 'Enter your district' : null,
                 ),
-                if (_isLaborer) ...[
+                if (RoleSubtypeX.hasSubtypes(widget.role)) ...[
                   const SizedBox(height: 22),
+                  Text(
+                    session.t('choose_specialisation'),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    session.t('specialisation_hint'),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...RoleSubtypeX.forRole(widget.role).map(
+                    (s) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _SubtypeTile(
+                        subtype: s,
+                        selected: _subtype == s,
+                        onTap: () => setState(() => _subtype = s),
+                      ),
+                    ),
+                  ),
+                ],
+                if (_needsCrewSize) ...[
+                  const SizedBox(height: 12),
                   const Text(
-                    'What kind of work?',
+                    'Do you work alone or as a group?',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -351,7 +406,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     ),
                   ),
                 ],
-                if (_isExporter || _isInvestor) ...[
+                if (_isExporter || _isInvestor || _isCommercialOperator) ...[
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _company,
@@ -359,16 +414,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     decoration: InputDecoration(
                       labelText: _isExporter
                           ? 'Registered company name'
-                          : 'Entity / fund name (optional)',
+                          : _isCommercialOperator
+                              ? 'Business / travels name'
+                              : 'Entity / fund name (optional)',
                       prefixIcon: const Icon(Icons.business_outlined),
                     ),
                     validator: (v) {
-                      if (_isExporter && (v?.trim().isEmpty ?? true)) {
-                        return 'Company name is required';
+                      if ((_isExporter || _isCommercialOperator) &&
+                          (v?.trim().isEmpty ?? true)) {
+                        return 'Business name is required';
                       }
                       return null;
                     },
                   ),
+                ],
+                if (_isExporter || _isInvestor) ...[
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _country,
@@ -381,16 +441,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         (v?.trim().isEmpty ?? true) ? 'Enter your country' : null,
                   ),
                 ],
-                if (_isExporter) ...[
+                if (_isExporter || _isCommercialOperator) ...[
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _registration,
-                    decoration: const InputDecoration(
-                      labelText: 'Company registration number',
-                      prefixIcon: Icon(Icons.badge_outlined),
+                    decoration: InputDecoration(
+                      labelText: _isExporter
+                          ? 'Company registration number'
+                          : 'Transport permit / licence number',
+                      prefixIcon: const Icon(Icons.badge_outlined),
                     ),
                     validator: (v) => (v?.trim().isEmpty ?? true)
-                        ? 'Registration number is required'
+                        ? 'This number is required'
                         : null,
                   ),
                 ],
@@ -419,6 +481,77 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Radio-style card used to pick a role specialisation during signup.
+/// Rendering is driven entirely by [RoleSubtypeX], so no role needs its own
+/// branch here — adding a subtype to the enum makes it appear automatically.
+class _SubtypeTile extends StatelessWidget {
+  final RoleSubtype subtype;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SubtypeTile({
+    required this.subtype,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primarySoft : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(subtype.icon, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    subtype.label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtype.description,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.3,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected ? AppColors.primary : AppColors.border,
+            ),
+          ],
         ),
       ),
     );

@@ -6,15 +6,29 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/money.dart';
 import '../../data/models/enums.dart';
+import '../../data/models/role_subtype.dart';
 import '../../data/models/vehicle.dart';
 import '../../state/marketplace_controller.dart';
 import '../../state/session_controller.dart';
 import '../dashboards/dashboard_parts.dart';
 import '../widgets/common.dart';
 
-/// Two distinct booking flows: goods vehicles and passenger vehicles.
+/// One booking flow that serves all three vehicle verticals — goods
+/// transport, taxi rides and self-drive rentals. The category decides the
+/// pricing basis (per km vs per day) and the sub-type chips filter supply.
 class TransportBookingScreen extends StatefulWidget {
-  const TransportBookingScreen({super.key});
+  final VehicleCategory category;
+
+  const TransportBookingScreen({
+    super.key,
+    this.category = VehicleCategory.goods,
+  });
+
+  const TransportBookingScreen.taxi({super.key})
+      : category = VehicleCategory.passenger;
+
+  const TransportBookingScreen.rental({super.key})
+      : category = VehicleCategory.rental;
 
   @override
   State<TransportBookingScreen> createState() =>
@@ -22,77 +36,88 @@ class TransportBookingScreen extends StatefulWidget {
 }
 
 class _TransportBookingScreenState extends State<TransportBookingScreen> {
-  VehicleCategory _category = VehicleCategory.goods;
+  RoleSubtype? _filter;
+
+  String get _title => switch (widget.category) {
+    VehicleCategory.goods => 'Book Transport',
+    VehicleCategory.passenger => 'Book a Ride',
+    VehicleCategory.rental => 'Rent a Vehicle',
+  };
+
+  IconData get _icon => switch (widget.category) {
+    VehicleCategory.goods => Icons.inventory_2_outlined,
+    VehicleCategory.passenger => Icons.local_taxi_outlined,
+    VehicleCategory.rental => Icons.vpn_key_outlined,
+  };
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<SessionController>().user!;
     final market = context.watch<MarketplaceController>();
-    final available = market.availableVehicles(_category);
+    final offered = market.offeredSubtypes(widget.category);
+    final available =
+        market.availableVehicles(widget.category, subtype: _filter);
     final myBookings = market
         .bookingsForUser(user.id)
-        .where((b) => b.requesterId == user.id)
+        .where((b) =>
+            b.requesterId == user.id && b.category == widget.category)
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Book Transport')),
+      appBar: AppBar(title: Text(_title)),
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: SegmentedButton<VehicleCategory>(
-                segments: const [
-                  ButtonSegment(
-                    value: VehicleCategory.goods,
-                    label: Text('Goods'),
-                    icon: Icon(Icons.local_shipping, size: 18),
-                  ),
-                  ButtonSegment(
-                    value: VehicleCategory.passenger,
-                    label: Text('Passenger'),
-                    icon: Icon(Icons.airline_seat_recline_normal, size: 18),
-                  ),
-                ],
-                selected: {_category},
-                onSelectionChanged: (s) => setState(() => _category = s.first),
-                style: SegmentedButton.styleFrom(
-                  selectedBackgroundColor: AppColors.primary,
-                  selectedForegroundColor: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: InfoBanner(
+                icon: _icon,
+                message: widget.category.description,
+              ),
+            ),
+            if (offered.isNotEmpty)
+              SizedBox(
+                height: 54,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  children: [
+                    _FilterChip(
+                      label: 'All',
+                      selected: _filter == null,
+                      onTap: () => setState(() => _filter = null),
+                    ),
+                    ...offered.map(
+                      (s) => _FilterChip(
+                        label: s.label,
+                        icon: s.icon,
+                        selected: _filter == s,
+                        onTap: () => setState(() => _filter = s),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: InfoBanner(
-                icon: _category == VehicleCategory.goods
-                    ? Icons.inventory_2_outlined
-                    : Icons.groups_outlined,
-                message: _category.description,
-              ),
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 children: [
-                  const SectionHeader('Available Vehicles'),
+                  const SectionHeader('Available Now'),
                   if (available.isEmpty)
                     const EmptyCard(
                       icon: Icons.no_transfer,
-                      message: 'No vehicles available in this category.',
+                      message: 'Nothing available in this category yet.',
                     )
                   else
-                    ...available.map(
-                      (v) => _BookableVehicleCard(vehicle: v),
-                    ),
+                    ...available.map((v) => _BookableVehicleCard(vehicle: v)),
                   const SizedBox(height: 20),
                   const SectionHeader('My Bookings'),
                   if (myBookings.isEmpty)
                     const EmptyCard(
                       icon: Icons.event_busy_outlined,
-                      message: 'You have not booked any vehicle yet.',
+                      message: 'You have not booked anything yet.',
                     )
                   else
                     ...myBookings.map((b) => BookingCard(booking: b)),
@@ -100,6 +125,62 @@ class _TransportBookingScreenState extends State<TransportBookingScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 15,
+                  color: selected ? Colors.white : AppColors.primary,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -133,9 +214,7 @@ class _BookableVehicleCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    vehicle.category == VehicleCategory.goods
-                        ? Icons.local_shipping
-                        : Icons.airport_shuttle,
+                    vehicle.subtype?.icon ?? Icons.local_shipping,
                     color: AppColors.primary,
                   ),
                 ),
@@ -146,6 +225,8 @@ class _BookableVehicleCard extends StatelessWidget {
                     children: [
                       Text(
                         vehicle.vehicleType,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w800,
@@ -154,6 +235,8 @@ class _BookableVehicleCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         '${vehicle.ownerName} · ${vehicle.capacityLabel}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 12.5,
                           color: AppColors.textSecondary,
@@ -163,7 +246,7 @@ class _BookableVehicleCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${Money.format(vehicle.ratePerKmPaise)}/km',
+                  '${Money.format(vehicle.ratePaise)}/${vehicle.rateUnit}',
                   style: const TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w900,
@@ -180,7 +263,11 @@ class _BookableVehicleCard extends StatelessWidget {
                   minimumSize: const Size.fromHeight(42),
                 ),
                 onPressed: () => _openBookingSheet(context, vehicle),
-                child: const Text('Book this vehicle'),
+                child: Text(
+                  vehicle.category.isDailyRate
+                      ? 'Rent this vehicle'
+                      : 'Book this vehicle',
+                ),
               ),
             ),
           ],
@@ -213,20 +300,24 @@ class _BookingSheet extends StatefulWidget {
 class _BookingSheetState extends State<_BookingSheet> {
   final _pickup = TextEditingController();
   final _drop = TextEditingController();
-  final _distance = TextEditingController();
+  final _quantity = TextEditingController();
   DateTime _when = DateTime.now().add(const Duration(days: 1));
+
+  bool get _isRental => widget.vehicle.category.isDailyRate;
 
   @override
   void dispose() {
     _pickup.dispose();
     _drop.dispose();
-    _distance.dispose();
+    _quantity.dispose();
     super.dispose();
   }
 
   int get _fare {
-    final km = double.tryParse(_distance.text) ?? 0;
-    return (widget.vehicle.ratePerKmPaise * km).round();
+    final value = double.tryParse(_quantity.text) ?? 0;
+    return _isRental
+        ? widget.vehicle.ratePerDayPaise * value.round()
+        : (widget.vehicle.ratePerKmPaise * value).round();
   }
 
   @override
@@ -250,7 +341,8 @@ class _BookingSheetState extends State<_BookingSheet> {
             const SizedBox(height: 4),
             Text(
               '${widget.vehicle.capacityLabel} · '
-              '${Money.format(widget.vehicle.ratePerKmPaise)} per km',
+              '${Money.format(widget.vehicle.ratePaise)} per '
+              '${widget.vehicle.rateUnit}',
               style: const TextStyle(
                 fontSize: 13,
                 color: AppColors.textSecondary,
@@ -260,32 +352,40 @@ class _BookingSheetState extends State<_BookingSheet> {
             TextField(
               controller: _pickup,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Pickup location',
-                prefixIcon: Icon(Icons.trip_origin, size: 20),
+              decoration: InputDecoration(
+                labelText: _isRental ? 'Pickup branch' : 'Pickup location',
+                prefixIcon: const Icon(Icons.trip_origin, size: 20),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _drop,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Drop location',
-                prefixIcon: Icon(Icons.place_outlined),
+              decoration: InputDecoration(
+                labelText: _isRental ? 'Return branch' : 'Drop location',
+                prefixIcon: const Icon(Icons.place_outlined),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _distance,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              controller: _quantity,
+              keyboardType: TextInputType.numberWithOptions(
+                decimal: !_isRental,
+              ),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}')),
+                if (_isRental)
+                  FilteringTextInputFormatter.digitsOnly
+                else
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}')),
               ],
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Approximate distance',
-                suffixText: 'km',
-                prefixIcon: Icon(Icons.route_outlined),
+              decoration: InputDecoration(
+                labelText:
+                    _isRental ? 'Rental duration' : 'Approximate distance',
+                suffixText: _isRental ? 'days' : 'km',
+                prefixIcon: Icon(
+                  _isRental ? Icons.calendar_month_outlined : Icons.route_outlined,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -310,7 +410,7 @@ class _BookingSheetState extends State<_BookingSheet> {
                   children: [
                     const Icon(Icons.event_outlined, size: 20),
                     const SizedBox(width: 12),
-                    const Text('Pickup date'),
+                    Text(_isRental ? 'Start date' : 'Pickup date'),
                     const Spacer(),
                     Text(
                       DateFormat('d MMM yyyy').format(_when),
@@ -331,9 +431,9 @@ class _BookingSheetState extends State<_BookingSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Text(
-                      'Estimated fare',
-                      style: TextStyle(
+                    Text(
+                      _isRental ? 'Estimated rent' : 'Estimated fare',
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
@@ -360,25 +460,32 @@ class _BookingSheetState extends State<_BookingSheet> {
                     _fare <= 0) {
                   showSnack(
                     context,
-                    'Fill pickup, drop and distance',
+                    _isRental
+                        ? 'Fill pickup, return and number of days'
+                        : 'Fill pickup, drop and distance',
                     error: true,
                   );
                   return;
                 }
+                final value = double.parse(_quantity.text);
                 final user = context.read<SessionController>().user!;
                 await context.read<MarketplaceController>().bookVehicle(
                       vehicle: widget.vehicle,
                       requester: user,
                       pickup: _pickup.text.trim(),
                       drop: _drop.text.trim(),
-                      distanceKm: double.parse(_distance.text),
+                      distanceKm: _isRental ? 0 : value,
+                      rentalDays: _isRental ? value.round() : 0,
                       scheduledAt: _when,
                     );
                 if (!context.mounted) return;
                 Navigator.of(context).pop();
-                showSnack(context, 'Booking requested');
+                showSnack(
+                  context,
+                  _isRental ? 'Rental requested' : 'Booking requested',
+                );
               },
-              child: const Text('Confirm Booking'),
+              child: Text(_isRental ? 'Confirm Rental' : 'Confirm Booking'),
             ),
           ],
         ),
