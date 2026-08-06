@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/rbac/permissions.dart';
+import '../../core/theme/app_colors.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/enums.dart';
 import '../../state/session_controller.dart';
@@ -171,19 +172,31 @@ class _AppShellState extends State<AppShell> {
         index: safeIndex,
         children: destinations.map((d) => d.screen).toList(),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: safeIndex,
-        onTap: (i) => setState(() => _index = i),
-        items: destinations
-            .map(
-              (d) => BottomNavigationBarItem(
-                icon: Icon(d.icon),
-                activeIcon: Icon(d.activeIcon),
-                label: _label(session, d.labelKey),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: safeIndex,
+          elevation: 0,
+          onTap: (i) => setState(() => _index = i),
+          items: [
+            for (var i = 0; i < destinations.length; i++)
+              BottomNavigationBarItem(
+                icon: _NavIcon(
+                  icon: destinations[i].icon,
+                  selected: false,
+                ),
+                activeIcon: _NavIcon(
+                  icon: destinations[i].activeIcon,
+                  selected: true,
+                ),
+                label: _label(session, destinations[i].labelKey),
               ),
-            )
-            .toList(),
+          ],
+        ),
       ),
     );
   }
@@ -191,5 +204,34 @@ class _AppShellState extends State<AppShell> {
   String _label(SessionController session, String key) {
     if (key == 'approvals') return 'Approvals';
     return session.t(key);
+  }
+}
+
+/// Tab icon with a short green rule above it when active, which reads as the
+/// current position more clearly than colour alone (and stays visible for
+/// colour-blind users).
+class _NavIcon extends StatelessWidget {
+  final IconData icon;
+  final bool selected;
+
+  const _NavIcon({required this.icon, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 22,
+          height: 3,
+          margin: const EdgeInsets.only(bottom: 5),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Icon(icon),
+      ],
+    );
   }
 }

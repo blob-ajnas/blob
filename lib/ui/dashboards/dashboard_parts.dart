@@ -16,138 +16,219 @@ import '../../state/marketplace_controller.dart';
 import '../../state/session_controller.dart';
 import '../market/listing_detail_screen.dart';
 import '../jobs/job_detail_screen.dart';
+import '../widgets/brand.dart';
 import '../widgets/common.dart';
+import '../../core/utils/crop_images.dart';
 
 final _dateFmt = DateFormat('d MMM');
 
-/// Dark green header card with greeting, role badge and INR stats.
-class DashboardHeader extends StatelessWidget {
+/// Light app bar that sits above the dashboard: brand lockup on the left,
+/// the user's district and a notification bell on the right.
+class HomeTopBar extends StatelessWidget {
   final AppUser user;
-  const DashboardHeader({super.key, required this.user});
+  const HomeTopBar({super.key, required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          const BlobMark(size: 34),
+          const SizedBox(width: 9),
+          // Two-line wordmark keeps the bar compact on narrow phones.
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'BLOB',
+                  style: TextStyle(
+                    fontSize: 17,
+                    height: 1.05,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  'Agri Market',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.location_on_outlined,
+            size: 15,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: 2),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 110),
+            child: Text(
+              user.district,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          _NotificationBell(user: user),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bell with a red dot when the account still needs attention.
+class _NotificationBell extends StatelessWidget {
+  final AppUser user;
+  const _NotificationBell({required this.user});
 
   @override
   Widget build(BuildContext context) {
     final market = context.watch<MarketplaceController>();
-    final cleared = market.clearedIncomingPaise(user.id);
-    final pending = market.pendingIncomingPaise(user.id);
-    final owed = market.pendingOutgoingPaise(user.id);
+    final pendingMoney = market.pendingIncomingPaise(user.id) > 0 ||
+        market.pendingOutgoingPaise(user.id) > 0;
+    final hasAlert = user.isPending || pendingMoney;
+
+    return Semantics(
+      label: hasAlert ? 'Notifications, unread' : 'Notifications',
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => showSnack(
+          context,
+          hasAlert
+              ? 'You have pending items that need attention.'
+              : 'No new notifications.',
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(
+                Icons.notifications_none,
+                size: 23,
+                color: AppColors.primary,
+              ),
+              if (hasAlert)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.background, width: 1),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dark green header card: local-language greeting, verified role pill and
+/// two circular INR stat rings.
+class DashboardHeader extends StatelessWidget {
+  final AppUser user;
+  const DashboardHeader({super.key, required this.user});
+
+  /// First name only — the greeting is personal, and full legal/company names
+  /// overflow the card on narrow screens.
+  String get _firstName {
+    final parts = user.name.trim().split(RegExp(r'\s+'));
+    return parts.isEmpty || parts.first.isEmpty ? 'there' : parts.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final market = context.watch<MarketplaceController>();
+    final session = context.watch<SessionController>();
     final isPayer = user.role == UserRole.buyer ||
-        user.role == UserRole.landowner ||
         user.role == UserRole.globalExporter ||
         user.role == UserRole.foreignInvestor;
 
+    // Landowners both earn and spend, so show what actually landed.
+    final primaryPaise = isPayer
+        ? market.clearedOutgoingPaise(user.id)
+        : market.clearedIncomingPaise(user.id);
+    final secondaryPaise =
+        isPayer ? market.pendingOutgoingPaise(user.id) : market.pendingIncomingPaise(user.id);
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    user.name.isNotEmpty ? user.name[0].toUpperCase() : 'B',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          size: 13,
-                          color: Colors.white.withValues(alpha: 0.8),
-                        ),
-                        const SizedBox(width: 3),
-                        Flexible(
-                          child: Text(
-                            user.district,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  user.role.shortLabel.toUpperCase(),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${session.t('greeting')},',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
+                    color: Colors.white,
+                    fontSize: 21,
+                    height: 1.15,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-            ],
+                Text(
+                  _firstName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    height: 1.15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _RolePill(user: user),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: StatTile(
-                  label: isPayer ? 'Paid Out' : 'Cleared',
-                  amountPaise: isPayer
-                      ? market.clearedOutgoingPaise(user.id)
-                      : cleared,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: StatTile(
-                  label: isPayer ? 'To Pay' : 'Pending',
-                  amountPaise: isPayer ? owed : pending,
-                  accent: const Color(0xFFFFD27A),
-                ),
-              ),
-            ],
+          const SizedBox(width: 8),
+          _StatRing(
+            label: isPayer ? 'Paid' : 'Cleared',
+            amountPaise: primaryPaise,
+          ),
+          const SizedBox(width: 8),
+          _StatRing(
+            label: isPayer ? 'To Pay' : 'Pending',
+            amountPaise: secondaryPaise,
+            amountColor: AppColors.pending,
           ),
         ],
       ),
@@ -155,20 +236,165 @@ class DashboardHeader extends StatelessWidget {
   }
 }
 
-class QuickActionsGrid extends StatelessWidget {
-  final List<Widget> actions;
-  const QuickActionsGrid({super.key, required this.actions});
+/// White pill under the greeting showing the role, with a tick once approved.
+class _RolePill extends StatelessWidget {
+  final AppUser user;
+  const _RolePill({required this.user});
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: 0.82,
-      children: actions,
+    final approved = !user.isPending;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 5, 11, 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            approved ? Icons.check_circle : Icons.hourglass_top,
+            size: 13,
+            color: approved ? AppColors.primary : AppColors.pending,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              user.role.shortLabel.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Circular white money chip used inside the green header.
+class _StatRing extends StatelessWidget {
+  final String label;
+  final int amountPaise;
+  final Color? amountColor;
+
+  const _StatRing({
+    required this.label,
+    required this.amountPaise,
+    this.amountColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$label ${Money.format(amountPaise)}',
+      child: Container(
+        width: 84,
+        height: 84,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 19,
+              height: 19,
+              decoration: const BoxDecoration(
+                color: AppColors.primarySoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  '\u20B9',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: FittedBox(
+                child: Text(
+                  Money.compact(amountPaise),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: amountColor ?? AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontally scrolling strip of quick actions.
+///
+/// A wrapping grid pushed content below the fold once landowners gained eight
+/// actions, so this scrolls sideways instead: about four tiles are visible and
+/// the clipped next one signals there is more to swipe to.
+///
+/// The parent list applies a 16px inset, but the strip should bleed to both
+/// screen edges. [OverflowBox] lets it render wider than its parent (negative
+/// padding is not legal in Flutter), while the list's own inset keeps the first
+/// tile aligned with the rest of the page.
+class QuickActionsGrid extends StatelessWidget {
+  final List<Widget> actions;
+
+  /// Horizontal inset applied by the enclosing page.
+  final double pageInset;
+
+  const QuickActionsGrid({
+    super.key,
+    required this.actions,
+    this.pageInset = 16,
+  });
+
+  static const double _tileWidth = 86;
+  static const double _gap = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final fullWidth = MediaQuery.sizeOf(context).width;
+
+    return SizedBox(
+      height: 96,
+      child: OverflowBox(
+        maxWidth: fullWidth,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: pageInset),
+          itemCount: actions.length,
+          separatorBuilder: (_, __) => const SizedBox(width: _gap),
+          itemBuilder: (_, i) => SizedBox(
+            width: _tileWidth,
+            child: actions[i],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -264,14 +490,14 @@ class ListingCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CropThumb(
+                  imageAsset: listing.imageAsset,
+                  cropName: listing.cropName,
+                  width: 52,
+                  height: 52,
                 ),
-                child: const Icon(Icons.grass, color: AppColors.primary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -324,6 +550,214 @@ class ListingCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Crop photograph with a graceful fallback if the asset is missing.
+class CropThumb extends StatelessWidget {
+  final String? imageAsset;
+  final String cropName;
+  final double? width;
+  final double? height;
+
+  const CropThumb({
+    super.key,
+    required this.cropName,
+    this.imageAsset,
+    this.width,
+    this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      CropImages.resolve(imageAsset: imageAsset, cropName: cropName),
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, __, ___) => Container(
+        width: width,
+        height: height,
+        color: AppColors.primarySoft,
+        child: const Center(
+          child: Icon(Icons.grass, color: AppColors.primary),
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontally scrolling photo cards for the owner's own crop listings.
+///
+/// Photos make a crop far easier to recognise at a glance than a text row,
+/// which matters for users who read slowly or are working in bright sunlight.
+class MyListingsStrip extends StatelessWidget {
+  final List<Listing> listings;
+  final double pageInset;
+
+  const MyListingsStrip({
+    super.key,
+    required this.listings,
+    this.pageInset = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fullWidth = MediaQuery.sizeOf(context).width;
+
+    return SizedBox(
+      height: 214,
+      child: OverflowBox(
+        maxWidth: fullWidth,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: pageInset),
+          itemCount: listings.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemBuilder: (_, i) => _ListingPhotoCard(listing: listings[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ListingPhotoCard extends StatelessWidget {
+  final Listing listing;
+  const _ListingPhotoCard({required this.listing});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 168,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ListingDetailScreen(listing: listing),
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(15),
+                    ),
+                    child: CropThumb(
+                      imageAsset: listing.imageAsset,
+                      cropName: listing.cropName,
+                      width: double.infinity,
+                      height: 104,
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: _ListingOverflowMenu(listing: listing),
+                  ),
+                  if (listing.status != ListingStatus.active)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: StatusPill.text(listing.status.label),
+                    ),
+                ],
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        listing.cropName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Quantity: ${listing.quantityQuintal.toStringAsFixed(0)} quintals',
+                        textAlign: TextAlign.start,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${Money.format(listing.pricePerQuintalPaise)} / quintal',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Overflow menu on a listing photo: mark sold / reserved / withdrawn.
+class _ListingOverflowMenu extends StatelessWidget {
+  final Listing listing;
+  const _ListingOverflowMenu({required this.listing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        shape: BoxShape.circle,
+      ),
+      child: PopupMenuButton<ListingStatus>(
+        icon: const Icon(Icons.more_horiz, size: 18),
+        iconSize: 18,
+        padding: EdgeInsets.zero,
+        tooltip: 'Listing options',
+        constraints: const BoxConstraints(minWidth: 168),
+        onSelected: (status) async {
+          await context
+              .read<MarketplaceController>()
+              .updateListingStatus(listing, status);
+          if (!context.mounted) return;
+          showSnack(context, 'Listing marked ${status.label.toLowerCase()}.');
+        },
+        itemBuilder: (_) => ListingStatus.values
+            .where((s) => s != listing.status)
+            .map(
+              (s) => PopupMenuItem<ListingStatus>(
+                value: s,
+                child: Text('Mark ${s.label.toLowerCase()}'),
+              ),
+            )
+            .toList(),
       ),
     );
   }

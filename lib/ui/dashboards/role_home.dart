@@ -37,8 +37,10 @@ class RoleHome extends StatelessWidget {
             await context.read<SessionController>().refreshUser();
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
             children: [
+              HomeTopBar(user: user),
+              const SizedBox(height: 4),
               DashboardHeader(user: user),
               const SizedBox(height: 18),
               if (user.isPending) ...[
@@ -142,7 +144,7 @@ class RoleHome extends StatelessWidget {
           onAction: () => _push(context, const CreateListingScreen()),
         )
       else
-        ...myListings.take(4).map((l) => ListingCard(listing: l)),
+        MyListingsStrip(listings: myListings.take(6).toList()),
       const SizedBox(height: 22),
       const SectionHeader('My Job Posts'),
       if (myJobs.isEmpty)

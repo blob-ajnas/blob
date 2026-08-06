@@ -1,7 +1,9 @@
+import '../core/utils/crop_images.dart';
 import 'local_db.dart';
 import 'models/app_user.dart';
 import 'models/enums.dart';
 import 'models/job.dart';
+import 'models/ledger.dart';
 import 'models/listing.dart';
 import 'models/property.dart';
 import 'models/role_subtype.dart';
@@ -12,7 +14,9 @@ import 'models/vehicle.dart';
 class Seed {
   Seed._();
 
-  static const _kSeeded = 'seed_v2';
+  // Bumped to v3: adds crop photos and seeded payment history, so existing
+  // installs must re-seed to pick them up.
+  static const _kSeeded = 'seed_v4';
 
   static Future<void> ensure() async {
     final db = LocalDb.instance;
@@ -251,6 +255,7 @@ class Seed {
         ownerRole: UserRole.landowner,
         cropName: 'Paddy (Sona Masuri)',
         description: 'Freshly harvested, sun-dried, moisture below 14%.',
+        imageAsset: CropImages.paddy,
         quantityQuintal: 120,
         pricePerQuintalPaise: 230000,
         district: 'Mandya',
@@ -264,11 +269,26 @@ class Seed {
         ownerRole: UserRole.landowner,
         cropName: 'Sugarcane',
         description: 'Ready for mill delivery, 10 acre yield.',
+        imageAsset: CropImages.sugarcane,
         quantityQuintal: 800,
         pricePerQuintalPaise: 34000,
         district: 'Mandya',
         channel: ListingChannel.toBuyers,
         createdAt: now.subtract(const Duration(days: 9)),
+      ),
+      Listing(
+        id: 'l_7',
+        ownerId: 'u_landowner_1',
+        ownerName: 'Ramesh Gowda',
+        ownerRole: UserRole.landowner,
+        cropName: 'Turmeric Fingers',
+        description: 'Polished fingers, high curcumin, double boiled.',
+        imageAsset: CropImages.turmeric,
+        quantityQuintal: 60,
+        pricePerQuintalPaise: 890000,
+        district: 'Mandya',
+        channel: ListingChannel.toBuyers,
+        createdAt: now.subtract(const Duration(days: 6)),
       ),
       Listing(
         id: 'l_3',
@@ -277,6 +297,7 @@ class Seed {
         ownerRole: UserRole.landowner,
         cropName: 'Arabica Coffee Parchment',
         description: 'Shade grown, hand picked, Grade A beans.',
+        imageAsset: CropImages.coffee,
         quantityQuintal: 45,
         pricePerQuintalPaise: 1850000,
         district: 'Hassan',
@@ -290,6 +311,7 @@ class Seed {
         ownerRole: UserRole.landowner,
         cropName: 'Ragi (Finger Millet)',
         description: 'Organic, no chemical fertiliser used.',
+        imageAsset: CropImages.ragi,
         quantityQuintal: 60,
         pricePerQuintalPaise: 380000,
         district: 'Hassan',
@@ -303,6 +325,7 @@ class Seed {
         ownerRole: UserRole.buyer,
         cropName: 'Byadagi Red Chilli',
         description: 'Graded and packed, export ready in 50kg bales.',
+        imageAsset: CropImages.chilli,
         quantityQuintal: 200,
         pricePerQuintalPaise: 1420000,
         district: 'Bengaluru Rural',
@@ -316,6 +339,7 @@ class Seed {
         ownerRole: UserRole.buyer,
         cropName: 'Turmeric Fingers',
         description: 'Polished, curcumin 3.2%, fumigation certified.',
+        imageAsset: CropImages.turmeric,
         quantityQuintal: 150,
         pricePerQuintalPaise: 960000,
         district: 'Bengaluru Rural',
@@ -586,6 +610,184 @@ class Seed {
 
     for (final p in properties) {
       await db.put(LocalDb.properties, p.id, p.toMap());
+    }
+
+    // Payment history. Without this the dashboard money rings all read zero,
+    // which makes the payment tracker look broken rather than empty.
+    final ledger = <LedgerEntry>[
+      // Landowner 1 — crop sales, one settled and one still awaited.
+      LedgerEntry(
+        id: 'led_1',
+        payerId: 'u_buyer_1',
+        payerName: 'Suresh Traders',
+        payeeId: 'u_landowner_1',
+        payeeName: 'Ramesh Gowda',
+        amountPaise: 3450000,
+        type: LedgerType.productPurchase,
+        status: PaymentStatus.cleared,
+        reference: 'l_1',
+        note: 'Paddy 15 quintal advance lot',
+        createdAt: now.subtract(const Duration(days: 12)),
+        clearedAt: now.subtract(const Duration(days: 11)),
+      ),
+      LedgerEntry(
+        id: 'led_2',
+        payerId: 'u_buyer_2',
+        payerName: 'Mysuru Retail Mart',
+        payeeId: 'u_landowner_1',
+        payeeName: 'Ramesh Gowda',
+        amountPaise: 800000,
+        type: LedgerType.productPurchase,
+        status: PaymentStatus.pending,
+        reference: 'l_2',
+        note: 'Sugarcane part payment due on delivery',
+        createdAt: now.subtract(const Duration(days: 2)),
+      ),
+      LedgerEntry(
+        id: 'led_3',
+        payerId: 'u_buyer_1',
+        payerName: 'Suresh Traders',
+        payeeId: 'u_landowner_1',
+        payeeName: 'Ramesh Gowda',
+        amountPaise: 800000,
+        type: LedgerType.productPurchase,
+        status: PaymentStatus.cleared,
+        reference: 'l_1',
+        note: 'Second paddy lot',
+        createdAt: now.subtract(const Duration(days: 6)),
+        clearedAt: now.subtract(const Duration(days: 5)),
+      ),
+      // Landowner 1 paying out wages.
+      LedgerEntry(
+        id: 'led_4',
+        payerId: 'u_landowner_1',
+        payerName: 'Ramesh Gowda',
+        payeeId: 'u_laborer_2',
+        payeeName: 'Manjunath Crew',
+        amountPaise: 1200000,
+        type: LedgerType.laborWage,
+        status: PaymentStatus.cleared,
+        reference: 'j_1',
+        note: 'Paddy harvesting crew — 6 days',
+        createdAt: now.subtract(const Duration(days: 8)),
+        clearedAt: now.subtract(const Duration(days: 8)),
+      ),
+      // Landowner 2.
+      LedgerEntry(
+        id: 'led_5',
+        payerId: 'u_exporter_1',
+        payerName: 'Global Agri Exports',
+        payeeId: 'u_landowner_2',
+        payeeName: 'Lakshmamma B',
+        amountPaise: 8325000,
+        type: LedgerType.productPurchase,
+        status: PaymentStatus.cleared,
+        reference: 'l_3',
+        note: 'Arabica parchment 4.5 quintal',
+        createdAt: now.subtract(const Duration(days: 9)),
+        clearedAt: now.subtract(const Duration(days: 7)),
+      ),
+      LedgerEntry(
+        id: 'led_6',
+        payerId: 'u_buyer_1',
+        payerName: 'Suresh Traders',
+        payeeId: 'u_landowner_2',
+        payeeName: 'Lakshmamma B',
+        amountPaise: 1900000,
+        type: LedgerType.productPurchase,
+        status: PaymentStatus.pending,
+        reference: 'l_4',
+        note: 'Ragi 5 quintal awaiting quality check',
+        createdAt: now.subtract(const Duration(days: 1)),
+      ),
+      // Buyer outgoing + broker commission.
+      LedgerEntry(
+        id: 'led_7',
+        payerId: 'u_buyer_1',
+        payerName: 'Suresh Traders',
+        payeeId: 'u_broker_1',
+        payeeName: 'Kiran Deals',
+        amountPaise: 86250,
+        type: LedgerType.brokerCommission,
+        status: PaymentStatus.cleared,
+        reference: 'l_1',
+        note: '2.5% commission on paddy deal',
+        createdAt: now.subtract(const Duration(days: 11)),
+        clearedAt: now.subtract(const Duration(days: 10)),
+      ),
+      LedgerEntry(
+        id: 'led_8',
+        payerId: 'u_exporter_1',
+        payerName: 'Global Agri Exports',
+        payeeId: 'u_broker_1',
+        payeeName: 'Kiran Deals',
+        amountPaise: 208125,
+        type: LedgerType.brokerCommission,
+        status: PaymentStatus.pending,
+        reference: 'l_3',
+        note: '2.5% commission on coffee export lot',
+        createdAt: now.subtract(const Duration(days: 3)),
+      ),
+      // Transport, taxi, rental and property income.
+      LedgerEntry(
+        id: 'led_9',
+        payerId: 'u_landowner_1',
+        payerName: 'Ramesh Gowda',
+        payeeId: 'u_transport_1',
+        payeeName: 'Mandya Goods Carrier',
+        amountPaise: 450000,
+        type: LedgerType.transportFare,
+        status: PaymentStatus.cleared,
+        reference: 'b_1',
+        note: 'Mandya to Bengaluru APMC, 1 trip',
+        createdAt: now.subtract(const Duration(days: 7)),
+        clearedAt: now.subtract(const Duration(days: 7)),
+      ),
+      LedgerEntry(
+        id: 'led_10',
+        payerId: 'u_landowner_2',
+        payerName: 'Lakshmamma B',
+        payeeId: 'u_taxi_1',
+        payeeName: 'Mysuru City Cabs',
+        amountPaise: 132000,
+        type: LedgerType.taxiFare,
+        status: PaymentStatus.cleared,
+        reference: 'b_2',
+        note: 'Hassan to Mysuru outstation drop',
+        createdAt: now.subtract(const Duration(days: 4)),
+        clearedAt: now.subtract(const Duration(days: 4)),
+      ),
+      LedgerEntry(
+        id: 'led_11',
+        payerId: 'u_landowner_1',
+        payerName: 'Ramesh Gowda',
+        payeeId: 'u_rental_1',
+        payeeName: 'Hassan Wheels Rentals',
+        amountPaise: 360000,
+        type: LedgerType.vehicleRentFee,
+        status: PaymentStatus.pending,
+        reference: 'b_3',
+        note: 'Jeep hire, 2 days',
+        createdAt: now.subtract(const Duration(days: 1)),
+      ),
+      LedgerEntry(
+        id: 'led_12',
+        payerId: 'u_buyer_1',
+        payerName: 'Suresh Traders',
+        payeeId: 'u_property_1',
+        payeeName: 'Nanjundaswamy Estates',
+        amountPaise: 4500000,
+        type: LedgerType.propertyRent,
+        status: PaymentStatus.cleared,
+        reference: 'p_1',
+        note: 'Godown monthly rent',
+        createdAt: now.subtract(const Duration(days: 5)),
+        clearedAt: now.subtract(const Duration(days: 5)),
+      ),
+    ];
+
+    for (final e in ledger) {
+      await db.put(LocalDb.ledger, e.id, e.toMap());
     }
 
     await db.setSetting(_kSeeded, true);
