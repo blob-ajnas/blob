@@ -204,18 +204,45 @@ void main() {
   });
 
   group('Localisation', () {
-    test('all seven languages are available', () {
-      expect(AppLanguage.values.length, 7);
-      expect(
-        AppLanguage.values.map((l) => l.code).toList(),
-        ['en', 'kn', 'mr', 'ml', 'ta', 'te', 'hi'],
-      );
+    test('English plus all 22 Eighth Schedule languages are available', () {
+      expect(AppLanguage.values.length, 23);
+      expect(AppLanguage.values.first, AppLanguage.english);
+      // Every Eighth Schedule language must be present.
+      const eighthSchedule = [
+        'as', 'bn', 'brx', 'doi', 'gu', 'hi', 'kn', 'ks', 'kok', 'mai',
+        'ml', 'mni', 'mr', 'ne', 'or', 'pa', 'sa', 'sat', 'sd', 'ta',
+        'te', 'ur',
+      ];
+      final codes = AppLanguage.values.map((l) => l.code).toSet();
+      for (final code in eighthSchedule) {
+        expect(codes, contains(code), reason: 'missing $code');
+      }
     });
 
-    test('every language has a native display name', () {
+    test('language codes are unique', () {
+      final codes = AppLanguage.values.map((l) => l.code).toList();
+      expect(codes.toSet().length, codes.length);
+    });
+
+    test('every language has a native and english display name', () {
       for (final lang in AppLanguage.values) {
         expect(lang.nativeName, isNotEmpty, reason: lang.code);
+        expect(lang.englishName, isNotEmpty, reason: lang.code);
       }
+    });
+
+    test('right-to-left scripts are flagged', () {
+      expect(AppLanguage.urdu.isRtl, isTrue);
+      expect(AppLanguage.kashmiri.isRtl, isTrue);
+      expect(AppLanguage.sindhi.isRtl, isTrue);
+      expect(AppLanguage.hindi.isRtl, isFalse);
+      expect(AppLanguage.english.isRtl, isFalse);
+    });
+
+    test('untranslated languages still resolve to readable English', () {
+      // Bodo has no translation map yet; it must not leak raw keys.
+      expect(S.t(AppLanguage.bodo, 'home'), S.t(AppLanguage.english, 'home'));
+      expect(S.t(AppLanguage.bodo, 'home'), isNot('home'));
     });
 
     test('no translation key falls back to a raw key name', () {

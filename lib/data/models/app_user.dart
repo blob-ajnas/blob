@@ -1,5 +1,6 @@
 import '../../core/rbac/permissions.dart';
 import 'enums.dart';
+import 'learning.dart';
 import 'role_subtype.dart';
 
 /// users table/collection
@@ -17,6 +18,15 @@ class AppUser {
   final String district;
   final VerificationStatus verificationStatus;
   final int freeJobPostsUsed;
+
+  /// Learning track chosen at signup. Null for accounts created before the
+  /// learning module, and for marketplace-only roles.
+  final UserCategory? category;
+
+  /// Last four Aadhaar digits only — never the full number. UIDAI's
+  /// data-minimisation guidance forbids storing the complete value.
+  final String? aadhaarLast4;
+  final bool aadhaarVerified;
   final DateTime createdAt;
 
   const AppUser({
@@ -34,6 +44,9 @@ class AppUser {
     this.country,
     this.verificationStatus = VerificationStatus.approved,
     this.freeJobPostsUsed = 0,
+    this.category,
+    this.aadhaarLast4,
+    this.aadhaarVerified = false,
   });
 
   bool get isApproved => verificationStatus == VerificationStatus.approved;
@@ -49,6 +62,8 @@ class AppUser {
   String get roleLine =>
       subtype == null ? role.label : '${role.label} · ${subtype!.label}';
 
+  bool get isStudent => category == UserCategory.student;
+
   AppUser copyWith({
     String? name,
     UserRole? role,
@@ -60,6 +75,9 @@ class AppUser {
     String? district,
     VerificationStatus? verificationStatus,
     int? freeJobPostsUsed,
+    UserCategory? category,
+    String? aadhaarLast4,
+    bool? aadhaarVerified,
   }) {
     return AppUser(
       id: id,
@@ -75,6 +93,9 @@ class AppUser {
       district: district ?? this.district,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       freeJobPostsUsed: freeJobPostsUsed ?? this.freeJobPostsUsed,
+      category: category ?? this.category,
+      aadhaarLast4: aadhaarLast4 ?? this.aadhaarLast4,
+      aadhaarVerified: aadhaarVerified ?? this.aadhaarVerified,
       createdAt: createdAt,
     );
   }
@@ -93,6 +114,9 @@ class AppUser {
     'district': district,
     'verification_status': verificationStatus.name,
     'free_job_posts_used': freeJobPostsUsed,
+    'category': category?.name,
+    'aadhaar_last4': aadhaarLast4,
+    'aadhaar_verified': aadhaarVerified,
     'created_at': createdAt.toIso8601String(),
   };
 
@@ -113,6 +137,9 @@ class AppUser {
     verificationStatus:
         VerificationStatusX.fromId(m['verification_status'] as String? ?? 'approved'),
     freeJobPostsUsed: (m['free_job_posts_used'] as num?)?.toInt() ?? 0,
+    category: UserCategoryX.tryFromId(m['category'] as String?),
+    aadhaarLast4: m['aadhaar_last4'] as String?,
+    aadhaarVerified: m['aadhaar_verified'] as bool? ?? false,
     createdAt:
         DateTime.tryParse(m['created_at'] as String? ?? '') ?? DateTime.now(),
   );

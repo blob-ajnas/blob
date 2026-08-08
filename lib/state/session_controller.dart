@@ -5,15 +5,19 @@ import '../core/i18n/strings.dart';
 import '../data/local_db.dart';
 import '../data/models/app_user.dart';
 import '../data/models/enums.dart';
+import '../data/models/learning.dart';
 import '../data/models/role_subtype.dart';
+import '../services/aadhaar_service.dart';
 import '../services/otp_service.dart';
 
 /// Owns language preference, OTP flow state and the persistent session.
 class SessionController extends ChangeNotifier {
-  SessionController({OtpService? otpService})
-      : _otp = otpService ?? OtpService();
+  SessionController({OtpService? otpService, AadhaarService? aadhaarService})
+      : _otp = otpService ?? OtpService(),
+        _aadhaar = aadhaarService ?? AadhaarService();
 
   final OtpService _otp;
+  final AadhaarService _aadhaar;
   final _db = LocalDb.instance;
   final _uuid = const Uuid();
 
@@ -28,6 +32,11 @@ class SessionController extends ChangeNotifier {
   String? _devCode;
   bool _busy = false;
 
+  // Aadhaar step state (held only until registration completes).
+  String _pendingAadhaar = '';
+  String? _aadhaarDevCode;
+  bool _aadhaarVerified = false;
+
   AppLanguage get language => _language;
   AppUser? get user => _user;
   bool get isLoggedIn => _user != null;
@@ -36,6 +45,9 @@ class SessionController extends ChangeNotifier {
   String get pendingCountryCode => _pendingCountryCode;
   String? get devCode => _devCode;
   bool get busy => _busy;
+  String get pendingAadhaarMasked => AadhaarService.mask(_pendingAadhaar);
+  String? get aadhaarDevCode => _aadhaarDevCode;
+  bool get aadhaarVerified => _aadhaarVerified;
 
   String t(String key) => S.t(_language, key);
 
@@ -87,6 +99,37 @@ class SessionController extends ChangeNotifier {
 
   Duration? get resendCooldown => _otp.cooldownRemaining(_pendingPhone);
 
+  // ---------------- Aadhaar flow ----------------
+
+  Future<AadhaarSendResult> requestAadhaarOtp(String aadhaarNumber) async {
+    _setBusy(true);
+    _pendingAadhaar = AadhaarService.normalise(aadhaarNumber);
+    final result = await _aadhaar.requestOtp(_pendingAadhaar);
+    _aadhaarDevCode = result.devCode;
+    _setBusy(false);
+    return result;
+  }
+
+  AadhaarVerifyResult verifyAadhaarOtp(String code) {
+    final result = _aadhaar.verify(_pendingAadhaar, code);
+    if (result.success) {
+      _aadhaarVerified = true;
+      notifyListeners();
+    }
+    return result;
+  }
+
+  /// Re-runs Aadhaar verification for an already-registered account, e.g.
+  /// from the profile screen.
+  Future<void> markAadhaarVerifiedOnUser() async {
+    final current = _user;
+    if (current == null) return;
+    await updateUser(current.copyWith(
+      aadhaarLast4: AadhaarService.last4(_pendingAadhaar),
+      aadhaarVerified: true,
+    ));
+  }
+
   /// Verifies the code. Returns the existing user when the phone is already
   /// registered (straight to dashboard), or null when signup is required.
   ({bool ok, String message, AppUser? existing}) verifyOtp(String code) {
@@ -119,6 +162,7 @@ class SessionController extends ChangeNotifier {
     String? companyName,
     String? registrationNo,
     String? country,
+    UserCategory? category,
   }) async {
     final needsApproval = role.requiresApproval;
     final user = AppUser(
@@ -136,6 +180,10 @@ class SessionController extends ChangeNotifier {
       verificationStatus: needsApproval
           ? VerificationStatus.pending
           : VerificationStatus.approved,
+      category: category,
+      aadhaarLast4:
+          _aadhaarVerified ? AadhaarService.last4(_pendingAadhaar) : null,
+      aadhaarVerified: _aadhaarVerified,
       createdAt: DateTime.now(),
     );
     await _db.put(LocalDb.users, user.id, user.toMap());
@@ -170,9 +218,13 @@ class SessionController extends ChangeNotifier {
 
   Future<void> logout() async {
     if (_pendingPhone.isNotEmpty) _otp.clear(_pendingPhone);
+    if (_pendingAadhaar.isNotEmpty) _aadhaar.clear(_pendingAadhaar);
     _user = null;
     _pendingPhone = '';
     _devCode = null;
+    _pendingAadhaar = '';
+    _aadhaarDevCode = null;
+    _aadhaarVerified = false;
     await _db.setSetting(_kSessionUserId, '');
     notifyListeners();
   }

@@ -1,46 +1,134 @@
-/// Lightweight i18n. Adding a language = adding one map below and one
-/// entry in [AppLanguage] — no other code changes needed.
+/// Lightweight i18n. Adding a language = adding one entry in [AppLanguage]
+/// plus its metadata below. A language without a translation map falls back
+/// to English per-key, so partial translations are safe to ship.
+///
+/// Covers English plus all 22 languages of the Eighth Schedule to the
+/// Constitution of India.
 enum AppLanguage {
   english,
+  hindi,
+  assamese,
+  bengali,
+  bodo,
+  dogri,
+  gujarati,
   kannada,
-  marathi,
+  kashmiri,
+  konkani,
+  maithili,
   malayalam,
+  manipuri,
+  marathi,
+  nepali,
+  odia,
+  punjabi,
+  sanskrit,
+  santali,
+  sindhi,
   tamil,
   telugu,
-  hindi,
+  urdu,
 }
 
 extension AppLanguageX on AppLanguage {
   String get code => switch (this) {
     AppLanguage.english => 'en',
+    AppLanguage.hindi => 'hi',
+    AppLanguage.assamese => 'as',
+    AppLanguage.bengali => 'bn',
+    AppLanguage.bodo => 'brx',
+    AppLanguage.dogri => 'doi',
+    AppLanguage.gujarati => 'gu',
     AppLanguage.kannada => 'kn',
-    AppLanguage.marathi => 'mr',
+    AppLanguage.kashmiri => 'ks',
+    AppLanguage.konkani => 'kok',
+    AppLanguage.maithili => 'mai',
     AppLanguage.malayalam => 'ml',
+    AppLanguage.manipuri => 'mni',
+    AppLanguage.marathi => 'mr',
+    AppLanguage.nepali => 'ne',
+    AppLanguage.odia => 'or',
+    AppLanguage.punjabi => 'pa',
+    AppLanguage.sanskrit => 'sa',
+    AppLanguage.santali => 'sat',
+    AppLanguage.sindhi => 'sd',
     AppLanguage.tamil => 'ta',
     AppLanguage.telugu => 'te',
-    AppLanguage.hindi => 'hi',
+    AppLanguage.urdu => 'ur',
   };
 
   /// Name shown in the picker, written in that language itself.
   String get nativeName => switch (this) {
     AppLanguage.english => 'English',
+    AppLanguage.hindi => 'हिन्दी',
+    AppLanguage.assamese => 'অসমীয়া',
+    AppLanguage.bengali => 'বাংলা',
+    AppLanguage.bodo => 'बड़ो',
+    AppLanguage.dogri => 'डोगरी',
+    AppLanguage.gujarati => 'ગુજરાતી',
     AppLanguage.kannada => 'ಕನ್ನಡ',
-    AppLanguage.marathi => 'मराठी',
+    AppLanguage.kashmiri => 'کٲشُر',
+    AppLanguage.konkani => 'कोंकणी',
+    AppLanguage.maithili => 'मैथिली',
     AppLanguage.malayalam => 'മലയാളം',
+    AppLanguage.manipuri => 'ꯃꯤꯇꯩꯂꯣꯟ',
+    AppLanguage.marathi => 'मराठी',
+    AppLanguage.nepali => 'नेपाली',
+    AppLanguage.odia => 'ଓଡ଼ିଆ',
+    AppLanguage.punjabi => 'ਪੰਜਾਬੀ',
+    AppLanguage.sanskrit => 'संस्कृतम्',
+    AppLanguage.santali => 'ᱥᱟᱱᱛᱟᱲᱤ',
+    AppLanguage.sindhi => 'سنڌي',
     AppLanguage.tamil => 'தமிழ்',
     AppLanguage.telugu => 'తెలుగు',
-    AppLanguage.hindi => 'हिन्दी',
+    AppLanguage.urdu => 'اردو',
   };
 
   String get englishName => switch (this) {
     AppLanguage.english => 'English',
+    AppLanguage.hindi => 'Hindi',
+    AppLanguage.assamese => 'Assamese',
+    AppLanguage.bengali => 'Bengali',
+    AppLanguage.bodo => 'Bodo',
+    AppLanguage.dogri => 'Dogri',
+    AppLanguage.gujarati => 'Gujarati',
     AppLanguage.kannada => 'Kannada',
-    AppLanguage.marathi => 'Marathi',
+    AppLanguage.kashmiri => 'Kashmiri',
+    AppLanguage.konkani => 'Konkani',
+    AppLanguage.maithili => 'Maithili',
     AppLanguage.malayalam => 'Malayalam',
+    AppLanguage.manipuri => 'Manipuri',
+    AppLanguage.marathi => 'Marathi',
+    AppLanguage.nepali => 'Nepali',
+    AppLanguage.odia => 'Odia',
+    AppLanguage.punjabi => 'Punjabi',
+    AppLanguage.sanskrit => 'Sanskrit',
+    AppLanguage.santali => 'Santali',
+    AppLanguage.sindhi => 'Sindhi',
     AppLanguage.tamil => 'Tamil',
     AppLanguage.telugu => 'Telugu',
-    AppLanguage.hindi => 'Hindi',
+    AppLanguage.urdu => 'Urdu',
   };
+
+  /// Scripts written right-to-left. Drives [Directionality] so Urdu,
+  /// Kashmiri and Sindhi lay out correctly instead of reading backwards.
+  bool get isRtl => const {
+    AppLanguage.urdu,
+    AppLanguage.kashmiri,
+    AppLanguage.sindhi,
+  }.contains(this);
+
+  /// True when the UI is fully translated. Others fall back to English
+  /// per-key, so the app stays usable while translations are completed.
+  bool get isFullyTranslated => const {
+    AppLanguage.english,
+    AppLanguage.hindi,
+    AppLanguage.kannada,
+    AppLanguage.marathi,
+    AppLanguage.malayalam,
+    AppLanguage.tamil,
+    AppLanguage.telugu,
+  }.contains(this);
 
   static AppLanguage fromCode(String code) => AppLanguage.values
       .firstWhere((e) => e.code == code, orElse: () => AppLanguage.english);

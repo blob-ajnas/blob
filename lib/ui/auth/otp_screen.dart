@@ -8,7 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../state/session_controller.dart';
 import '../shell/app_shell.dart';
 import '../widgets/common.dart';
-import 'role_selection_screen.dart';
+import 'aadhaar_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -70,8 +70,9 @@ class _OtpScreenState extends State<OtpScreen> {
         (route) => false,
       );
     } else {
+      // New account: phone is confirmed, next step is Aadhaar verification.
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const RoleSelectionScreen()),
+        MaterialPageRoute<void>(builder: (_) => const AadhaarScreen()),
       );
     }
   }

@@ -16,6 +16,9 @@ class LocalDb {
   static const String investments = 'investments';
   static const String properties = 'properties';
   static const String enquiries = 'enquiries';
+  static const String studentProfiles = 'student_profiles';
+  static const String dailyProgress = 'daily_progress';
+  static const String activities = 'activities';
   static const String settings = 'settings';
 
   static const List<String> _boxes = [
@@ -29,6 +32,9 @@ class LocalDb {
     investments,
     properties,
     enquiries,
+    studentProfiles,
+    dailyProgress,
+    activities,
     settings,
   ];
 

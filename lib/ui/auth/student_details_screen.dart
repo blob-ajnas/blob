@@ -1,0 +1,238 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../data/models/learning.dart';
+import '../widgets/common.dart';
+import 'role_selection_screen.dart';
+
+/// Student details captured before the account exists. [StudentProfile] is
+/// keyed by user id, which is only assigned at registration, so the form
+/// result travels forward in this lightweight carrier.
+class PendingStudentDetails {
+  final String tenthMarksCardNumber;
+  final String currentClass;
+  final String collegeName;
+  final String goals;
+
+  const PendingStudentDetails({
+    required this.tenthMarksCardNumber,
+    required this.currentClass,
+    required this.collegeName,
+    required this.goals,
+  });
+
+  StudentProfile toProfile(String userId) => StudentProfile(
+        userId: userId,
+        tenthMarksCardNumber: tenthMarksCardNumber,
+        currentClass: currentClass,
+        collegeName: collegeName,
+        goals: goals,
+        updatedAt: DateTime.now(),
+      );
+}
+
+/// Step 3 — academic background. Every field is required.
+class StudentDetailsScreen extends StatefulWidget {
+  const StudentDetailsScreen({super.key});
+
+  @override
+  State<StudentDetailsScreen> createState() => _StudentDetailsScreenState();
+}
+
+class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _marksCard = TextEditingController();
+  final _college = TextEditingController();
+  final _goals = TextEditingController();
+  String? _currentClass;
+
+  /// Covers school through post-graduation so the form fits every student.
+  static const _classOptions = <String>[
+    'Class 8',
+    'Class 9',
+    'Class 10',
+    'Class 11',
+    'Class 12',
+    'ITI / Diploma',
+    'Undergraduate — 1st year',
+    'Undergraduate — 2nd year',
+    'Undergraduate — 3rd year',
+    'Undergraduate — 4th year',
+    'Postgraduate',
+    'Other',
+  ];
+
+  @override
+  void dispose() {
+    _marksCard.dispose();
+    _college.dispose();
+    _goals.dispose();
+    super.dispose();
+  }
+
+  void _continue() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_currentClass == null) {
+      showSnack(context, 'Please select your current class', error: true);
+      return;
+    }
+    final details = PendingStudentDetails(
+      tenthMarksCardNumber: _marksCard.text.trim(),
+      currentClass: _currentClass!,
+      collegeName: _college.text.trim(),
+      goals: _goals.text.trim(),
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RoleSelectionScreen(
+          category: UserCategory.student,
+          studentDetails: details,
+        ),
+      ),
+    );
+  }
+
+  String? _required(String? value, String label) {
+    if (value == null || value.trim().isEmpty) return '$label is required';
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Student details')),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            children: [
+              const Text(
+                'Tell us about your studies',
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'We use this to match your daily tasks and quizzes to your '
+                'level. All fields are required.',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.4,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              const _FieldLabel('10th marks card number'),
+              TextFormField(
+                controller: _marksCard,
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9/\-]')),
+                  LengthLimitingTextInputFormatter(24),
+                ],
+                decoration: const InputDecoration(
+                  hintText: 'e.g. KSEEB2021123456',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+                validator: (v) {
+                  final base = _required(v, 'Marks card number');
+                  if (base != null) return base;
+                  if (v!.trim().length < 6) {
+                    return 'Enter the full number from your marks card';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+
+              const _FieldLabel('Current class / year'),
+              DropdownButtonFormField<String>(
+                initialValue: _currentClass,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.school_outlined),
+                  hintText: 'Select your class',
+                ),
+                items: [
+                  for (final option in _classOptions)
+                    DropdownMenuItem(value: option, child: Text(option)),
+                ],
+                onChanged: (v) => setState(() => _currentClass = v),
+                validator: (v) =>
+                    v == null ? 'Current class is required' : null,
+              ),
+              const SizedBox(height: 18),
+
+              const _FieldLabel('School / college name'),
+              TextFormField(
+                controller: _college,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Government PU College, Mandya',
+                  prefixIcon: Icon(Icons.apartment_outlined),
+                ),
+                validator: (v) => _required(v, 'School / college name'),
+              ),
+              const SizedBox(height: 18),
+
+              const _FieldLabel('Your goals & aspirations'),
+              TextFormField(
+                controller: _goals,
+                maxLines: 4,
+                maxLength: 300,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText:
+                      'e.g. I want to become an agricultural officer and '
+                      'help farmers in my district get better prices.',
+                  alignLabelWithHint: true,
+                ),
+                validator: (v) {
+                  final base = _required(v, 'Goals');
+                  if (base != null) return base;
+                  if (v!.trim().length < 15) {
+                    return 'Tell us a little more — at least 15 characters';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _continue,
+                  child: const Text('Continue'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String text;
+  const _FieldLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+}

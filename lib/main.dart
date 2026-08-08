@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local_db.dart';
 import 'data/seed.dart';
+import 'core/i18n/strings.dart';
+import 'state/learning_controller.dart';
 import 'state/marketplace_controller.dart';
 import 'state/session_controller.dart';
 import 'ui/onboarding/welcome_screen.dart';
@@ -25,12 +27,23 @@ class BlobApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => SessionController()..load()),
         ChangeNotifierProvider(create: (_) => MarketplaceController()),
+        ChangeNotifierProvider(create: (_) => LearningController()),
       ],
       child: MaterialApp(
         title: 'BLOB',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         home: const _Root(),
+        builder: (context, child) {
+          // Urdu, Kashmiri and Sindhi are right-to-left scripts; without this
+          // the whole layout reads backwards.
+          final language = context.watch<SessionController>().language;
+          return Directionality(
+            textDirection:
+                language.isRtl ? TextDirection.rtl : TextDirection.ltr,
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
       ),
     );
   }

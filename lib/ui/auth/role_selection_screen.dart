@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/models/enums.dart';
+import '../../data/models/learning.dart';
 import '../../data/models/role_subtype.dart';
+import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
 import '../shell/app_shell.dart';
 import '../widgets/common.dart';
+import 'student_details_screen.dart';
 
 class RoleMeta {
   final UserRole role;
@@ -39,7 +42,19 @@ const kRoleMeta = <RoleMeta>[
 ];
 
 class RoleSelectionScreen extends StatefulWidget {
-  const RoleSelectionScreen({super.key});
+  /// Learning track chosen in Step 2. Carried through so the account is
+  /// created with it in a single write.
+  final UserCategory? category;
+
+  /// Pending student details from Step 3, saved once the account exists
+  /// (the profile is keyed by user id, which does not exist until then).
+  final PendingStudentDetails? studentDetails;
+
+  const RoleSelectionScreen({
+    super.key,
+    this.category,
+    this.studentDetails,
+  });
 
   @override
   State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
@@ -166,8 +181,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     ? null
                     : () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) =>
-                                ProfileSetupScreen(role: _selected!),
+                            builder: (_) => ProfileSetupScreen(
+                              role: _selected!,
+                              category: widget.category,
+                              studentDetails: widget.studentDetails,
+                            ),
                           ),
                         ),
                 child: Text(session.t('continue_label')),
@@ -183,7 +201,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 /// Collects role-specific profile details before creating the account.
 class ProfileSetupScreen extends StatefulWidget {
   final UserRole role;
-  const ProfileSetupScreen({super.key, required this.role});
+  final UserCategory? category;
+  final PendingStudentDetails? studentDetails;
+
+  const ProfileSetupScreen({
+    super.key,
+    required this.role,
+    this.category,
+    this.studentDetails,
+  });
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -233,7 +259,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     final session = context.read<SessionController>();
-    await session.register(
+    final learning = context.read<LearningController>();
+    final user = await session.register(
       name: _name.text,
       role: widget.role,
       subtype: _subtype,
@@ -243,7 +270,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       registrationNo:
           _registration.text.trim().isEmpty ? null : _registration.text.trim(),
       country: _country.text.trim().isEmpty ? null : _country.text.trim(),
+      category: widget.category,
     );
+
+    // Student details were collected before the user id existed, so they are
+    // persisted here against the new account.
+    final details = widget.studentDetails;
+    if (details != null) {
+      await learning.saveProfile(details.toProfile(user.id));
+    }
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const AppShell()),
