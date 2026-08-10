@@ -9,6 +9,7 @@ import '../../state/session_controller.dart';
 import '../admin/admin_screen.dart';
 import '../investors/investor_directory_screen.dart';
 import '../jobs/post_job_screen.dart';
+import '../learning/learn_dashboard.dart';
 import '../market/create_listing_screen.dart';
 import '../market/market_screen.dart';
 import '../payments/payments_screen.dart';
@@ -52,6 +53,13 @@ class RoleHome extends StatelessWidget {
                   color: AppColors.warning,
                   background: AppColors.pendingSoft,
                 ),
+                const SizedBox(height: 18),
+              ],
+              // Learners see the daily challenge above their role workspace:
+              // the streak is time-sensitive, so it should not sit below a
+              // scroll fold.
+              if (user.category != null) ...[
+                const DailyChallengeCard(),
                 const SizedBox(height: 18),
               ],
               ..._bodyFor(context, user),

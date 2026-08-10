@@ -27,4 +27,11 @@ class AppColors {
   static const Color pendingSoft = Color(0xFFFFF2DC);
   static const Color clearedSoft = Color(0xFFE6F0E7);
   static const Color dangerSoft = Color(0xFFFBE9E7);
+
+  /// Learning module accents. Amber reads clearly against the dark green
+  /// player surface and on the green dashboard header, where the primary
+  /// green would disappear.
+  static const Color accent = Color(0xFFFFC107);
+  static const Color accentSoft = Color(0xFFFFF7E0);
+  static const Color streak = Color(0xFFE65100);
 }

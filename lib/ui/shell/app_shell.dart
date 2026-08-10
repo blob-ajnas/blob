@@ -9,6 +9,7 @@ import '../../state/session_controller.dart';
 import '../admin/admin_screen.dart';
 import '../dashboards/role_home.dart';
 import '../jobs/jobs_screen.dart';
+import '../learning/learn_dashboard.dart';
 import '../market/market_screen.dart';
 import '../payments/payments_screen.dart';
 import '../profile/profile_screen.dart';
@@ -91,6 +92,20 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.home_work,
         labelKey: 'property',
         screen: PropertyMarketScreen(),
+      ));
+    }
+
+    // --- Learning platform ---
+    // Everyone who picked a category during signup (Student or Job Seeker)
+    // opted into the daily challenge, so Learn gets a guaranteed slot rather
+    // than competing with the generic tabs below — a streak-based feature is
+    // useless if it is buried two taps deep.
+    if (user.category != null) {
+      tabs.add(const NavDestination(
+        icon: Icons.school_outlined,
+        activeIcon: Icons.school,
+        labelKey: 'learn',
+        screen: LearnDashboard(),
       ));
     }
 
