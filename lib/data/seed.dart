@@ -3,6 +3,7 @@ import 'local_db.dart';
 import 'models/app_user.dart';
 import 'models/enums.dart';
 import 'models/job.dart';
+import 'models/learning.dart';
 import 'models/ledger.dart';
 import 'models/listing.dart';
 import 'models/property.dart';
@@ -14,9 +15,10 @@ import 'models/vehicle.dart';
 class Seed {
   Seed._();
 
-  // Bumped to v3: adds crop photos and seeded payment history, so existing
-  // installs must re-seed to pick them up.
-  static const _kSeeded = 'seed_v4';
+  // Bumped to v5: adds learning-platform accounts, student profiles, daily
+  // progress and activity history, so existing installs must re-seed to pick
+  // up a populated leaderboard.
+  static const _kSeeded = 'seed_v5';
 
   static Future<void> ensure() async {
     final db = LocalDb.instance;
@@ -240,6 +242,86 @@ class Seed {
         role: UserRole.admin,
         district: 'Bengaluru Urban',
         createdAt: now.subtract(const Duration(days: 120)),
+      ),
+
+      // --- Learning platform accounts ---
+      // These carry a UserCategory, which is what unlocks the Learn tab and
+      // puts them on the leaderboard. Sign in as +919845050001 to land on a
+      // student account with an existing streak and history.
+      //
+      // NOTE: UserRole has no `student` value, so every learner still picks a
+      // marketplace role at signup. Students are seeded as labourers/buyers
+      // because that matches the real audience (students taking part-time farm
+      // work), but see the note in the accompanying summary — whether students
+      // should get a dedicated role is a product decision.
+      AppUser(
+        id: 'u_student_1',
+        phone: '+919845050001',
+        countryCode: '+91',
+        name: 'Divya S',
+        role: UserRole.laborer,
+        subtype: RoleSubtype.dailyHarvestWork,
+        laborerType: LaborerType.singleWorker,
+        district: 'Mandya',
+        category: UserCategory.student,
+        aadhaarLast4: '4821',
+        aadhaarVerified: true,
+        createdAt: now.subtract(const Duration(days: 30)),
+      ),
+      AppUser(
+        id: 'u_student_2',
+        phone: '+919845050002',
+        countryCode: '+91',
+        name: 'Arjun Patil',
+        role: UserRole.laborer,
+        subtype: RoleSubtype.skilledFieldOperator,
+        laborerType: LaborerType.singleWorker,
+        district: 'Belagavi',
+        category: UserCategory.student,
+        aadhaarLast4: '9037',
+        aadhaarVerified: true,
+        createdAt: now.subtract(const Duration(days: 26)),
+      ),
+      AppUser(
+        id: 'u_student_3',
+        phone: '+919845050003',
+        countryCode: '+91',
+        name: 'Fathima Noor',
+        role: UserRole.buyer,
+        subtype: RoleSubtype.retailMarketBuyer,
+        district: 'Mysuru',
+        category: UserCategory.student,
+        aadhaarLast4: '2765',
+        aadhaarVerified: true,
+        createdAt: now.subtract(const Duration(days: 21)),
+      ),
+      AppUser(
+        id: 'u_seeker_1',
+        phone: '+919845050004',
+        countryCode: '+91',
+        name: 'Ravi Kumar',
+        role: UserRole.laborer,
+        subtype: RoleSubtype.singleAndGroup,
+        laborerType: LaborerType.singleWorker,
+        district: 'Hassan',
+        category: UserCategory.jobSeeker,
+        aadhaarLast4: '5510',
+        aadhaarVerified: true,
+        createdAt: now.subtract(const Duration(days: 18)),
+      ),
+      AppUser(
+        id: 'u_seeker_2',
+        phone: '+919845050005',
+        countryCode: '+91',
+        name: 'Sneha Raikar',
+        role: UserRole.laborer,
+        subtype: RoleSubtype.dailyHarvestWork,
+        laborerType: LaborerType.groupWork,
+        district: 'Tumakuru',
+        category: UserCategory.jobSeeker,
+        aadhaarLast4: '1194',
+        aadhaarVerified: true,
+        createdAt: now.subtract(const Duration(days: 12)),
       ),
     ];
 
@@ -790,6 +872,190 @@ class Seed {
       await db.put(LocalDb.ledger, e.id, e.toMap());
     }
 
+    await _seedLearning(db, now);
+
     await db.setSetting(_kSeeded, true);
   }
+
+  /// Seeds the learning platform: student profiles, a back-dated streak of
+  /// daily progress, and the matching activity history.
+  ///
+  /// Without this, a fresh install shows an empty leaderboard and an empty
+  /// history — the two screens that are meant to motivate the user look
+  /// broken. Progress rows are written relative to *today*, so the streak is
+  /// always live no matter when the app is first opened.
+  static Future<void> _seedLearning(LocalDb db, DateTime now) async {
+    // Student academic profiles (Step 3 of the signup flow).
+    final profiles = <StudentProfile>[
+      StudentProfile(
+        userId: 'u_student_1',
+        tenthMarksCardNumber: 'KSEEB/2021/884517',
+        currentClass: 'Undergraduate — 2nd year',
+        collegeName: 'PES College of Engineering, Mandya',
+        goals:
+            'Finish my B.E. in agricultural engineering and set up a soil '
+            'testing service for farmers in my taluk.',
+        updatedAt: now.subtract(const Duration(days: 29)),
+      ),
+      StudentProfile(
+        userId: 'u_student_2',
+        tenthMarksCardNumber: 'KSEEB/2022/701244',
+        currentClass: 'Class 12',
+        collegeName: 'Government PU College, Belagavi',
+        goals:
+            'Clear the CET exam and get an agriculture seat, then help run '
+            'our family sugarcane land more scientifically.',
+        updatedAt: now.subtract(const Duration(days: 25)),
+      ),
+      StudentProfile(
+        userId: 'u_student_3',
+        tenthMarksCardNumber: 'KSEEB/2020/553108',
+        currentClass: 'ITI / Diploma',
+        collegeName: 'Government ITI, Mysuru',
+        goals:
+            'Complete my diploma in food processing and start a small turmeric '
+            'grading unit with two of my classmates.',
+        updatedAt: now.subtract(const Duration(days: 20)),
+      ),
+    ];
+
+    for (final p in profiles) {
+      await db.put(LocalDb.studentProfiles, p.userId, p.toMap());
+    }
+
+    // Back-dated activity. `daysAgo` 0 is today; the streak logic walks
+    // backwards from today-or-yesterday, so leaving a gap breaks the run on
+    // purpose (u_seeker_2 below demonstrates a broken streak).
+    //
+    // Points must match DailyTaskType: video 30, games 30, quiz 40.
+    final plans = <_LearningDay>[
+      // Divya — 6-day unbroken run including today, all three tasks done.
+      for (var d = 0; d < 6; d++)
+        _LearningDay('u_student_1', d, video: 15, games: 3, quiz: 10,
+            correct: d.isEven ? 9 : 8),
+      // Arjun — 4-day run, today only partly done so his card shows progress.
+      _LearningDay('u_student_2', 0, video: 15, games: 1, quiz: 0, correct: 0),
+      for (var d = 1; d < 4; d++)
+        _LearningDay('u_student_2', d, video: 15, games: 3, quiz: 10,
+            correct: 7),
+      // Fathima — started yesterday, strong quiz scores.
+      for (var d = 1; d < 3; d++)
+        _LearningDay('u_student_3', d, video: 15, games: 3, quiz: 10,
+            correct: 10),
+      // Ravi — casual user, video only.
+      for (var d = 0; d < 3; d++)
+        _LearningDay('u_seeker_1', d, video: 15, games: 0, quiz: 0, correct: 0),
+      // Sneha — lapsed: last active 5 days ago, so her streak reads 0 while
+      // her points remain. This proves the streak reset path works.
+      for (var d = 5; d < 8; d++)
+        _LearningDay('u_seeker_2', d, video: 15, games: 3, quiz: 10,
+            correct: 6),
+    ];
+
+    var activitySeq = 0;
+    for (final plan in plans) {
+      final date = now.subtract(Duration(days: plan.daysAgo));
+      final dayKey = DailyProgress.dayKeyOf(date);
+
+      var points = 0;
+      if (plan.video >= DailyTaskType.video.target) {
+        points += DailyTaskType.video.points;
+      }
+      if (plan.games >= DailyTaskType.games.target) {
+        points += DailyTaskType.games.points;
+      }
+      if (plan.quiz >= DailyTaskType.quiz.target) {
+        points += DailyTaskType.quiz.points;
+      }
+
+      await db.put(
+        LocalDb.dailyProgress,
+        DailyProgress.keyFor(plan.userId, date),
+        DailyProgress(
+          userId: plan.userId,
+          dayKey: dayKey,
+          videoMinutes: plan.video,
+          gamesPlayed: plan.games,
+          quizAnswered: plan.quiz,
+          quizCorrect: plan.correct,
+          pointsEarned: points,
+        ).toMap(),
+      );
+
+      // One history row per task actually completed, timed through the
+      // evening so the history list reads in a believable order.
+      final base = DateTime(date.year, date.month, date.day, 18);
+
+      if (plan.video >= DailyTaskType.video.target) {
+        activitySeq++;
+        await db.put(
+          LocalDb.activities,
+          'act_seed_$activitySeq',
+          ActivityRecord(
+            id: 'act_seed_$activitySeq',
+            userId: plan.userId,
+            type: DailyTaskType.video,
+            title: 'Watched: Soil Health & Crop Rotation Basics',
+            points: DailyTaskType.video.points,
+            createdAt: base,
+          ).toMap(),
+        );
+      }
+      if (plan.games >= DailyTaskType.games.target) {
+        activitySeq++;
+        await db.put(
+          LocalDb.activities,
+          'act_seed_$activitySeq',
+          ActivityRecord(
+            id: 'act_seed_$activitySeq',
+            userId: plan.userId,
+            type: DailyTaskType.games,
+            title: 'Completed 3 learning games',
+            points: DailyTaskType.games.points,
+            score: plan.games,
+            outOf: DailyTaskType.games.target,
+            createdAt: base.add(const Duration(minutes: 25)),
+          ).toMap(),
+        );
+      }
+      if (plan.quiz >= DailyTaskType.quiz.target) {
+        activitySeq++;
+        await db.put(
+          LocalDb.activities,
+          'act_seed_$activitySeq',
+          ActivityRecord(
+            id: 'act_seed_$activitySeq',
+            userId: plan.userId,
+            type: DailyTaskType.quiz,
+            title: 'Daily quiz — ${plan.correct}/${plan.quiz} correct',
+            points: DailyTaskType.quiz.points,
+            score: plan.correct,
+            outOf: plan.quiz,
+            createdAt: base.add(const Duration(minutes: 50)),
+          ).toMap(),
+        );
+      }
+    }
+  }
+}
+
+/// One seeded day of learning activity for one user.
+class _LearningDay {
+  const _LearningDay(
+    this.userId,
+    this.daysAgo, {
+    required this.video,
+    required this.games,
+    required this.quiz,
+    required this.correct,
+  });
+
+  final String userId;
+
+  /// 0 = today.
+  final int daysAgo;
+  final int video;
+  final int games;
+  final int quiz;
+  final int correct;
 }
