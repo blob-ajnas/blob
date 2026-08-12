@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:blob/core/i18n/strings.dart';
 import 'package:blob/core/rbac/permissions.dart';
 import 'package:blob/core/utils/money.dart';
@@ -388,6 +390,39 @@ void main() {
         expect(q.options.toSet().length, q.options.length,
             reason: 'duplicate options for "${q.question}"');
       }
+    });
+
+    test('shuffling moves the answer without corrupting it', () {
+      // Regression guard: every question is *authored* with the answer at
+      // index 0, so an unshuffled quiz can be aced by tapping A ten times.
+      // shuffled() must relocate the answer while keeping correctIndex
+      // pointing at the same option text.
+      final rng = Random(20250811);
+      var moved = 0;
+      for (final q in LearningContent.dailyQuiz) {
+        final answer = q.options[q.correctIndex];
+        for (var attempt = 0; attempt < 8; attempt++) {
+          final s = q.shuffled(rng);
+          expect(s.question, q.question);
+          expect(s.options.toSet(), q.options.toSet(),
+              reason: 'shuffle dropped or invented an option');
+          expect(s.options.length, q.options.length);
+          expect(s.options[s.correctIndex], answer,
+              reason: 'shuffle broke the answer mapping');
+          if (s.correctIndex != 0) moved++;
+        }
+      }
+      // Across 80 shuffles the answer must land off slot A most of the time.
+      expect(moved, greaterThan(40),
+          reason: 'answers are not actually being redistributed');
+    });
+
+    test('a shuffled quiz cannot be aced by always picking option A', () {
+      final rng = Random(7);
+      final quiz = [for (final q in LearningContent.dailyQuiz) q.shuffled(rng)];
+      final alwaysA = quiz.where((q) => q.correctIndex == 0).length;
+      expect(alwaysA, lessThan(quiz.length),
+          reason: 'tapping A every time still scores full marks');
     });
 
     test('the video lesson is exactly the advertised fifteen minutes', () {

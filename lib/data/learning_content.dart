@@ -2,6 +2,8 @@
 /// connectivity — the same constraint that drives the rest of the app.
 library;
 
+import 'dart:math';
+
 class QuizQuestion {
   final String question;
   final List<String> options;
@@ -14,6 +16,23 @@ class QuizQuestion {
     required this.correctIndex,
     required this.explanation,
   });
+
+  /// Returns the same question with its options in a random order.
+  ///
+  /// Every question below is authored with the answer first, which keeps the
+  /// source readable but would let a learner score 10/10 by tapping A ten
+  /// times — the quiz would measure nothing. Shuffling at presentation time
+  /// keeps authoring simple and the answer position unguessable.
+  QuizQuestion shuffled([Random? random]) {
+    final rng = random ?? Random();
+    final indices = List<int>.generate(options.length, (i) => i)..shuffle(rng);
+    return QuizQuestion(
+      question: question,
+      options: [for (final i in indices) options[i]],
+      correctIndex: indices.indexOf(correctIndex),
+      explanation: explanation,
+    );
+  }
 }
 
 class VideoLesson {

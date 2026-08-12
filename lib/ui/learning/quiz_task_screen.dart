@@ -26,7 +26,13 @@ class QuizTaskScreen extends StatefulWidget {
 }
 
 class _QuizTaskScreenState extends State<QuizTaskScreen> {
-  static final List<QuizQuestion> _questions = LearningContent.dailyQuiz;
+  /// Built per attempt, not shared statically: the answer options are
+  /// shuffled so the correct one is never predictably in the same slot, and
+  /// the question order varies so a repeat attempt is not pure recall of the
+  /// sequence.
+  late final List<QuizQuestion> _questions = [
+    for (final q in LearningContent.dailyQuiz) q.shuffled(),
+  ]..shuffle();
 
   int _index = 0;
   int _correct = 0;
