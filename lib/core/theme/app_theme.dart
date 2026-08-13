@@ -4,14 +4,21 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light {
+  /// Agri marketplace theme (dark green).
+  static ThemeData get agri => _build(const AgriPalette());
+
+  /// Education theme (blue). Identical layout, spacing, radii and type scale —
+  /// only the brand hue differs, so the two tracks feel like one product.
+  static ThemeData get edu => _build(const EduPalette());
+
+  static ThemeData _build(AppPalette p) {
     final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
-      scaffoldBackgroundColor: AppColors.background,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
+      scaffoldBackgroundColor: p.background,
+      colorScheme: ColorScheme.light(
+        primary: p.primary,
         onPrimary: AppColors.textOnPrimary,
-        secondary: AppColors.primaryLight,
+        secondary: p.primaryLight,
         onSecondary: AppColors.textOnPrimary,
         surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
@@ -35,7 +42,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: p.border),
         ),
       ),
       dialogTheme: DialogThemeData(
@@ -44,7 +51,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: p.primary,
           foregroundColor: AppColors.textOnPrimary,
           minimumSize: const Size.fromHeight(54),
           elevation: 0,
@@ -56,9 +63,9 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: p.primary,
           minimumSize: const Size.fromHeight(54),
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          side: BorderSide(color: p.primary, width: 1.5),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -67,7 +74,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: p.primary,
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
@@ -80,42 +87,42 @@ class AppTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: p.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: p.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: BorderSide(color: p.primary, width: 2),
         ),
         labelStyle: const TextStyle(color: AppColors.textSecondary),
       ),
       chipTheme: base.chipTheme.copyWith(
-        backgroundColor: AppColors.primarySoft,
+        backgroundColor: p.primarySoft,
         side: BorderSide.none,
-        labelStyle: const TextStyle(
-          color: AppColors.primary,
+        labelStyle: TextStyle(
+          color: p.primary,
           fontWeight: FontWeight.w600,
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
+        selectedItemColor: p.primary,
         unselectedItemColor: AppColors.textSecondary,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: TextStyle(
+        selectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 12,
         ),
-        unselectedLabelStyle: TextStyle(
+        unselectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w500,
           fontSize: 12,
         ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+      dividerTheme: DividerThemeData(
+        color: p.border,
         thickness: 1,
         space: 1,
       ),

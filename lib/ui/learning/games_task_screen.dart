@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../data/learning_content.dart';
+import '../../data/task_content_pack.dart';
 import '../../data/models/learning.dart';
 import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
@@ -16,7 +16,11 @@ import '../widgets/common.dart';
 /// arithmetic, term matching, and price-order sorting. Each is drawn from
 /// content a trader or student actually needs.
 class GamesTaskScreen extends StatefulWidget {
-  const GamesTaskScreen({super.key});
+  /// Subject material for this track. Mechanics are identical; only the
+  /// content differs, so a student never sees market or trade material.
+  final TaskContentPack pack;
+
+  const GamesTaskScreen({super.key, required this.pack});
 
   @override
   State<GamesTaskScreen> createState() => _GamesTaskScreenState();
@@ -39,9 +43,9 @@ class _GamesTaskScreenState extends State<GamesTaskScreen> {
     final result = await Navigator.of(context).push<({int score, int outOf})>(
       MaterialPageRoute(
         builder: (_) => switch (index) {
-          0 => const _MathGame(),
-          1 => const _MatchGame(),
-          _ => const _SortGame(),
+          0 => _MathGame(pack: widget.pack),
+          1 => _MatchGame(pack: widget.pack),
+          _ => _SortGame(pack: widget.pack),
         },
       ),
     );
@@ -72,20 +76,21 @@ class _GamesTaskScreenState extends State<GamesTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const games = [
+    final pack = widget.pack;
+    final games = [
       (
-        title: 'Market Maths',
-        subtitle: 'Work out quintal and commission totals',
+        title: pack.mathTitle,
+        subtitle: pack.mathSubtitle,
         icon: Icons.calculate_outlined,
       ),
       (
-        title: 'Match the Term',
-        subtitle: 'Pair trading words with their meaning',
+        title: pack.matchTitle,
+        subtitle: pack.matchSubtitle,
         icon: Icons.extension_outlined,
       ),
       (
-        title: 'Price Order',
-        subtitle: 'Sort crop prices from low to high',
+        title: pack.orderTitle,
+        subtitle: pack.orderSubtitle,
         icon: Icons.swap_vert_outlined,
       ),
     ];
@@ -233,14 +238,15 @@ class _GameCard extends StatelessWidget {
 
 /// Five market-arithmetic questions.
 class _MathGame extends StatefulWidget {
-  const _MathGame();
+  final TaskContentPack pack;
+  const _MathGame({required this.pack});
 
   @override
   State<_MathGame> createState() => _MathGameState();
 }
 
 class _MathGameState extends State<_MathGame> {
-  late final List<({String prompt, int answer, List<int> options})> _rounds;
+  late final List<MathRound> _rounds;
   int _index = 0;
   int _score = 0;
   int? _picked;
@@ -248,7 +254,7 @@ class _MathGameState extends State<_MathGame> {
   @override
   void initState() {
     super.initState();
-    _rounds = List.of(LearningContent.mathRounds)..shuffle(Random());
+    _rounds = List.of(widget.pack.mathRounds)..shuffle(Random());
   }
 
   void _pick(int value) {
@@ -274,7 +280,7 @@ class _MathGameState extends State<_MathGame> {
   Widget build(BuildContext context) {
     final round = _rounds[_index];
     return Scaffold(
-      appBar: AppBar(title: const Text('Market Maths')),
+      appBar: AppBar(title: Text(widget.pack.mathTitle)),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -300,7 +306,9 @@ class _MathGameState extends State<_MathGame> {
               const SizedBox(height: 32),
               for (final option in round.options) ...[
                 _OptionButton(
-                  label: '\u20B9${_format(option)}',
+                  label: widget.pack.mathAnswersAreMoney
+                      ? '\u20B9${_format(option)}'
+                      : _plain(option),
                   state: _picked == null
                       ? _OptionState.idle
                       : option == round.answer
@@ -318,6 +326,18 @@ class _MathGameState extends State<_MathGame> {
       ),
     );
   }
+
+  /// Non-money answers render as a plain number. The education pack stores
+  /// percentages scaled by 10 (875 = 87.5%) so the option list can stay
+  /// `List<int>`; this is where that is turned back into readable text.
+  String _plain(int value) =>
+      value >= 100 && value % 10 != 0 && value > 300 && _looksLikePercent
+          ? '${(value / 10).toStringAsFixed(1)}%'
+          : value.toString();
+
+  /// True when this round's prompt asks for a percentage.
+  bool get _looksLikePercent =>
+      _rounds[_index].prompt.toLowerCase().contains('percentage');
 
   String _format(int value) {
     final s = value.toString();
@@ -339,7 +359,8 @@ class _MathGameState extends State<_MathGame> {
 
 /// Tap a term, then tap its meaning.
 class _MatchGame extends StatefulWidget {
-  const _MatchGame();
+  final TaskContentPack pack;
+  const _MatchGame({required this.pack});
 
   @override
   State<_MatchGame> createState() => _MatchGameState();
@@ -348,7 +369,7 @@ class _MatchGame extends StatefulWidget {
 class _MatchGameState extends State<_MatchGame> {
   static const _pairCount = 4;
 
-  late List<({String term, String meaning})> _pairs;
+  late List<TermPair> _pairs;
   late List<String> _terms;
   late List<String> _meanings;
 
@@ -359,7 +380,7 @@ class _MatchGameState extends State<_MatchGame> {
   @override
   void initState() {
     super.initState();
-    final all = List.of(LearningContent.termPairs)..shuffle(Random());
+    final all = List.of(widget.pack.termPairs)..shuffle(Random());
     _pairs = all.take(_pairCount).toList();
     _terms = _pairs.map((p) => p.term).toList()..shuffle(Random());
     _meanings = _pairs.map((p) => p.meaning).toList()..shuffle(Random());
@@ -398,7 +419,7 @@ class _MatchGameState extends State<_MatchGame> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Match the Term')),
+      appBar: AppBar(title: Text(widget.pack.matchTitle)),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -529,42 +550,48 @@ class _MatchChip extends StatelessWidget {
 
 /// Reorder four prices from lowest to highest.
 class _SortGame extends StatefulWidget {
-  const _SortGame();
+  final TaskContentPack pack;
+  const _SortGame({required this.pack});
 
   @override
   State<_SortGame> createState() => _SortGameState();
 }
 
 class _SortGameState extends State<_SortGame> {
-  late List<({String crop, int price})> _items;
+  late final OrderRound _round;
+  late List<String> _items;
 
   @override
   void initState() {
     super.initState();
-    _items = [
-      (crop: 'Sugarcane', price: 340),
-      (crop: 'Paddy (Sona Masuri)', price: 2300),
-      (crop: 'Turmeric Fingers', price: 8900),
-      (crop: 'Arabica Coffee', price: 18500),
-    ]..shuffle(Random());
+    _round = (List.of(widget.pack.orderRounds)..shuffle(Random())).first;
+    // Shuffle until the starting order is not already correct, otherwise the
+    // round can be won without doing anything.
+    final shuffled = List.of(_round.ordered);
+    var guard = 0;
+    do {
+      shuffled.shuffle(Random());
+      guard++;
+    } while (_sameOrder(shuffled, _round.ordered) && guard < 20);
+    _items = shuffled;
   }
 
-  bool get _isSorted {
-    for (var i = 0; i < _items.length - 1; i++) {
-      if (_items[i].price > _items[i + 1].price) return false;
+  static bool _sameOrder(List<String> a, List<String> b) {
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
     }
     return true;
   }
+
+  bool get _isSorted => _sameOrder(_items, _round.ordered);
 
   void _submit() {
     if (_isSorted) {
       Navigator.of(context).pop((score: _items.length, outOf: _items.length));
     } else {
       var correct = 0;
-      final sorted = List.of(_items)
-        ..sort((a, b) => a.price.compareTo(b.price));
       for (var i = 0; i < _items.length; i++) {
-        if (_items[i].crop == sorted[i].crop) correct++;
+        if (_items[i] == _round.ordered[i]) correct++;
       }
       showSnack(context,
           'Not quite — $correct of ${_items.length} in the right place',
@@ -575,16 +602,16 @@ class _SortGameState extends State<_SortGame> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Price Order')),
+      appBar: AppBar(title: Text(widget.pack.orderTitle)),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const Text(
-                'Drag to arrange from lowest to highest price per quintal',
+              Text(
+                _round.prompt,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -603,7 +630,7 @@ class _SortGameState extends State<_SortGame> {
                   children: [
                     for (final item in _items)
                       Container(
-                        key: ValueKey(item.crop),
+                        key: ValueKey(item),
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 16),
@@ -619,7 +646,7 @@ class _SortGameState extends State<_SortGame> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                item.crop,
+                                item,
                                 style: const TextStyle(
                                   fontSize: 14.5,
                                   fontWeight: FontWeight.w800,

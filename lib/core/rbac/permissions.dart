@@ -110,6 +110,11 @@ class Rbac {
       Permission.bookTaxi,
       Permission.viewPaymentTracker,
     },
+    // Students hold NO marketplace capability. This empty set is the single
+    // enforcement point that keeps crops, jobs, transport, property and
+    // payments out of the education app: every marketplace tab and action is
+    // gated on a permission, so there is nothing to individually hide.
+    UserRole.student: <Permission>{},
     UserRole.admin: {
       Permission.approveAccounts,
       Permission.browseMarket,

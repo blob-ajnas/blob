@@ -4,6 +4,16 @@ library;
 
 import 'dart:math';
 
+/// A single round of the "Quick Maths" / "Market Maths" game.
+typedef MathRound = ({String prompt, int answer, List<int> options});
+
+/// A term/definition pair for the "Match the Term" game.
+typedef TermPair = ({String term, String meaning});
+
+/// Ordered items for the sequencing game. [ordered] is the correct order;
+/// the screen shuffles it for presentation.
+typedef OrderRound = ({String prompt, List<String> ordered});
+
 class QuizQuestion {
   final String question;
   final List<String> options;
@@ -179,7 +189,7 @@ class LearningContent {
   ];
 
   /// Word bank for the "Match the term" game round.
-  static const List<({String term, String meaning})> termPairs = [
+  static const List<TermPair> termPairs = [
     (term: 'Quintal', meaning: '100 kilograms'),
     (term: 'Kharif', meaning: 'Monsoon sowing season'),
     (term: 'Rabi', meaning: 'Winter sowing season'),
@@ -191,8 +201,7 @@ class LearningContent {
   ];
 
   /// Quick-maths game: market arithmetic a trader actually does.
-  static const List<({String prompt, int answer, List<int> options})>
-      mathRounds = [
+  static const List<MathRound> mathRounds = [
     (prompt: '12 quintals at ₹2,300 each = ?', answer: 27600,
         options: [27600, 25300, 28600, 26400]),
     (prompt: '₹8,400 split equally among 4 workers = ?', answer: 2100,
@@ -203,5 +212,28 @@ class LearningContent {
         options: [35, 3, 350, 3500]),
     (prompt: '₹650 per worker × 12 workers = ?', answer: 7800,
         options: [7800, 7200, 8400, 6500]),
+  ];
+
+  /// Sequencing game: order crops by market price per quintal, lowest first.
+  /// Previously hardcoded inside the game screen; lifted here so both tracks
+  /// share one mechanic driven by data.
+  static const List<OrderRound> orderRounds = [
+    (
+      prompt: 'Order these crops by price per quintal, lowest first',
+      ordered: [
+        'Sugarcane',
+        'Paddy (Sona Masuri)',
+        'Turmeric Fingers',
+        'Arabica Coffee',
+      ],
+    ),
+    (
+      prompt: 'Order these weights from smallest to largest',
+      ordered: ['1 kilogram', '1 quintal', '1 tonne', '10 tonnes'],
+    ),
+    (
+      prompt: 'Order the stages of getting a crop to market',
+      ordered: ['Sowing', 'Harvesting', 'Grading', 'Mandi sale'],
+    ),
   ];
 }

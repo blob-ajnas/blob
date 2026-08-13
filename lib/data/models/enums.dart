@@ -12,6 +12,12 @@ enum UserRole {
   taxiService,
   vehicleRental,
   propertyOwner,
+
+  /// Education track. Deliberately a first-class role rather than reusing a
+  /// marketplace role: a student must hold NO marketplace capability at all
+  /// (see `Rbac._matrix`, where this role maps to an empty set), so no crop,
+  /// job, transport or payment surface can ever leak into their app.
+  student,
   admin,
 }
 
@@ -29,6 +35,7 @@ extension UserRoleX on UserRole {
     UserRole.taxiService => 'Taxi Service',
     UserRole.vehicleRental => 'Vehicle Rent',
     UserRole.propertyOwner => 'Property & Land Rental',
+    UserRole.student => 'Student',
     UserRole.admin => 'Administrator',
   };
 
