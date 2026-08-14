@@ -22,12 +22,16 @@ class AppColors {
   AppColors._();
 
   // ---- Brand colours: re-pointed by [applyPalette] ----
-  static Color primary = AgriPalette.primary;
-  static Color primaryDark = AgriPalette.primaryDark;
-  static Color primaryLight = AgriPalette.primaryLight;
-  static Color primarySoft = AgriPalette.primarySoft;
-  static Color background = AgriPalette.background;
-  static Color border = AgriPalette.border;
+  // Default to agri so pre-login screens (language, splash, OTP) have a hue
+  // before any user exists to pick a track from.
+  static Color primary = _agri.primary;
+  static Color primaryDark = _agri.primaryDark;
+  static Color primaryLight = _agri.primaryLight;
+  static Color primarySoft = _agri.primarySoft;
+  static Color background = _agri.background;
+  static Color border = _agri.border;
+
+  static const AppPalette _agri = AgriPalette();
 
   /// Points the brand colours at [palette]. Call before building signed-in UI.
   static void applyPalette(AppPalette palette) {
@@ -64,7 +68,13 @@ class AppColors {
 }
 
 /// A brand colour set. Two exist: [AgriPalette] and [EduPalette].
+///
+/// Declared as `final` fields on a `const` constructor rather than statics, so
+/// a palette can be passed around as a value (`const EduPalette()`) while still
+/// being usable in constant expressions.
 abstract class AppPalette {
+  const AppPalette();
+
   Color get primary;
   Color get primaryDark;
   Color get primaryLight;
@@ -74,53 +84,39 @@ abstract class AppPalette {
 }
 
 /// Agri marketplace — dark green, chosen for legibility in direct sunlight.
-class AgriPalette implements AppPalette {
+class AgriPalette extends AppPalette {
   const AgriPalette();
 
-  static const Color primary = Color(0xFF1B5E20);
-  static const Color primaryDark = Color(0xFF0E3D13);
-  static const Color primaryLight = Color(0xFF2E7D32);
-  static const Color primarySoft = Color(0xFFE6F0E7);
-  static const Color background = Color(0xFFF6F8F6);
-  static const Color border = Color(0xFFD9E2DA);
-
   @override
-  Color get primary => AgriPalette.primary;
+  Color get primary => const Color(0xFF1B5E20);
   @override
-  Color get primaryDark => AgriPalette.primaryDark;
+  Color get primaryDark => const Color(0xFF0E3D13);
   @override
-  Color get primaryLight => AgriPalette.primaryLight;
+  Color get primaryLight => const Color(0xFF2E7D32);
   @override
-  Color get primarySoft => AgriPalette.primarySoft;
+  Color get primarySoft => const Color(0xFFE6F0E7);
   @override
-  Color get background => AgriPalette.background;
+  Color get background => const Color(0xFFF6F8F6);
   @override
-  Color get border => AgriPalette.border;
+  Color get border => const Color(0xFFD9E2DA);
 }
 
 /// Education track — blue. Contrast ratios are held at the same level as the
 /// green palette so nothing becomes harder to read after switching: primary
 /// on white is 8.6:1 here versus 8.9:1 for green, both well past WCAG AA.
-class EduPalette implements AppPalette {
+class EduPalette extends AppPalette {
   const EduPalette();
 
-  static const Color primary = Color(0xFF12468F);
-  static const Color primaryDark = Color(0xFF0A2C5C);
-  static const Color primaryLight = Color(0xFF1E6BC8);
-  static const Color primarySoft = Color(0xFFE4EDFA);
-  static const Color background = Color(0xFFF5F7FB);
-  static const Color border = Color(0xFFD5DEEC);
-
   @override
-  Color get primary => EduPalette.primary;
+  Color get primary => const Color(0xFF12468F);
   @override
-  Color get primaryDark => EduPalette.primaryDark;
+  Color get primaryDark => const Color(0xFF0A2C5C);
   @override
-  Color get primaryLight => EduPalette.primaryLight;
+  Color get primaryLight => const Color(0xFF1E6BC8);
   @override
-  Color get primarySoft => EduPalette.primarySoft;
+  Color get primarySoft => const Color(0xFFE4EDFA);
   @override
-  Color get background => EduPalette.background;
+  Color get background => const Color(0xFFF5F7FB);
   @override
-  Color get border => EduPalette.border;
+  Color get border => const Color(0xFFD5DEEC);
 }

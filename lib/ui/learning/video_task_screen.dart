@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../data/learning_content.dart';
+import '../../data/learning_content.dart' show VideoLesson;
+import '../../data/task_content_pack.dart';
 import '../../data/models/learning.dart';
 import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
@@ -17,14 +18,17 @@ import '../widgets/common.dart';
 /// time is credited only while playing, and progress is written to Hive
 /// every minute so closing the app mid-lesson never loses credit.
 class VideoTaskScreen extends StatefulWidget {
-  const VideoTaskScreen({super.key});
+  /// Subject material for this track.
+  final TaskContentPack pack;
+
+  const VideoTaskScreen({super.key, required this.pack});
 
   @override
   State<VideoTaskScreen> createState() => _VideoTaskScreenState();
 }
 
 class _VideoTaskScreenState extends State<VideoTaskScreen> {
-  static const _lesson = LearningContent.todaysVideo;
+  VideoLesson get _lesson => widget.pack.video;
 
   Timer? _timer;
   bool _playing = false;

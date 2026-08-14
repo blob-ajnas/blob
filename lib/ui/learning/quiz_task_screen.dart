@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../data/learning_content.dart';
+import '../../data/task_content_pack.dart';
 import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
 import '../widgets/common.dart';
@@ -19,7 +20,10 @@ import '../widgets/common.dart';
 /// target could be farmed by opening the quiz ten times and answering one
 /// question each visit.
 class QuizTaskScreen extends StatefulWidget {
-  const QuizTaskScreen({super.key});
+  /// Subject material for this track.
+  final TaskContentPack pack;
+
+  const QuizTaskScreen({super.key, required this.pack});
 
   @override
   State<QuizTaskScreen> createState() => _QuizTaskScreenState();
@@ -31,7 +35,7 @@ class _QuizTaskScreenState extends State<QuizTaskScreen> {
   /// the question order varies so a repeat attempt is not pure recall of the
   /// sequence.
   late final List<QuizQuestion> _questions = [
-    for (final q in LearningContent.dailyQuiz) q.shuffled(),
+    for (final q in widget.pack.quiz) q.shuffled(),
   ]..shuffle();
 
   int _index = 0;

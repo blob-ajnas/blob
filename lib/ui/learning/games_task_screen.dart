@@ -327,17 +327,11 @@ class _MathGameState extends State<_MathGame> {
     );
   }
 
-  /// Non-money answers render as a plain number. The education pack stores
-  /// percentages scaled by 10 (875 = 87.5%) so the option list can stay
-  /// `List<int>`; this is where that is turned back into readable text.
-  String _plain(int value) =>
-      value >= 100 && value % 10 != 0 && value > 300 && _looksLikePercent
-          ? '${(value / 10).toStringAsFixed(1)}%'
-          : value.toString();
-
-  /// True when this round's prompt asks for a percentage.
-  bool get _looksLikePercent =>
-      _rounds[_index].prompt.toLowerCase().contains('percentage');
+  /// Non-money answers render as the plain integer. Rounds are authored so
+  /// every answer is a whole number, and any unit is stated in the prompt
+  /// (e.g. "= ? (%)") rather than inferred here — guessing a unit from the
+  /// prompt text would silently mislabel answers as content grows.
+  String _plain(int value) => value.toString();
 
   String _format(int value) {
     final s = value.toString();

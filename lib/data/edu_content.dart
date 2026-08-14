@@ -11,8 +11,7 @@ library;
 
 import 'dart:math';
 
-import 'learning_content.dart'
-    show MathRound, OrderRound, QuizQuestion, TermPair, VideoLesson;
+import 'task_types.dart';
 
 class EduContent {
   EduContent._();
@@ -128,8 +127,11 @@ class EduContent {
   static const List<MathRound> mathRounds = [
     (prompt: '24 × 15 = ?', answer: 360, options: [360, 340, 380, 320]),
     (prompt: '18² = ?', answer: 324, options: [324, 304, 344, 361]),
-    (prompt: '7/8 expressed as a percentage = ?',
-        answer: 875, options: [875, 780, 825, 925]),
+    // Answers are plain integers on purpose: a fraction like 7/8 (87.5%)
+    // would need a scaled encoding and a decoder in the UI, which is a lot of
+    // fragile machinery for one sum. 3/4 keeps the round exact.
+    (prompt: '3/4 expressed as a percentage = ? (%)',
+        answer: 75, options: [75, 70, 80, 65]),
     (prompt: 'If 5x = 45, then x = ?', answer: 9, options: [9, 8, 11, 10]),
     (prompt: 'HCF of 36 and 48 = ?', answer: 12, options: [12, 6, 18, 24]),
     (prompt: 'Average of 12, 18, 24 and 30 = ?',

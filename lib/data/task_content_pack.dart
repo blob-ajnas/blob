@@ -9,6 +9,11 @@ library;
 
 import 'edu_content.dart';
 import 'learning_content.dart';
+import 'task_types.dart';
+
+// Task screens take a pack and nothing else, so they get the content shapes
+// from here rather than reaching into either track's content library.
+export 'task_types.dart';
 
 class TaskContentPack {
   /// Today's 15-minute lesson.

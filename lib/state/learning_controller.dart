@@ -275,7 +275,12 @@ class LearningController extends ChangeNotifier {
 
   // ---------------- Leaderboard ----------------
 
-  List<LeaderboardEntry> leaderboard({int limit = 20}) {
+  /// Ranked scores, highest first.
+  ///
+  /// [category] scopes the board to one track. Students and job seekers answer
+  /// completely different questions, so a combined board would rank people on
+  /// incomparable work — each track competes only against itself.
+  List<LeaderboardEntry> leaderboard({int limit = 20, UserCategory? category}) {
     final byUser = <String, int>{};
     for (final raw in _db.all(LocalDb.dailyProgress)) {
       final id = raw['user_id'] as String? ?? '';
@@ -287,6 +292,7 @@ class LearningController extends ChangeNotifier {
     final entries = <LeaderboardEntry>[];
     for (final raw in _db.all(LocalDb.users)) {
       final user = AppUser.fromMap(raw);
+      if (category != null && user.category != category) continue;
       final points = byUser[user.id] ?? 0;
       if (points <= 0) continue;
       entries.add(LeaderboardEntry(
@@ -306,8 +312,11 @@ class LearningController extends ChangeNotifier {
   }
 
   /// 1-based position, or null when the user has not scored yet.
-  int? rankOf(String userId) {
-    final board = leaderboard(limit: 1000);
+  ///
+  /// Pass [category] to rank within one track, matching whichever board the
+  /// user is actually looking at.
+  int? rankOf(String userId, {UserCategory? category}) {
+    final board = leaderboard(limit: 1000, category: category);
     for (var i = 0; i < board.length; i++) {
       if (board[i].userId == userId) return i + 1;
     }
@@ -319,20 +328,41 @@ class LearningController extends ChangeNotifier {
   /// Learners active today, derived from real progress records rather than a
   /// fabricated number. A small baseline is added so the figure reads as a
   /// community rather than "1 user" on a fresh install.
-  int activeToday() {
+  /// [category] scopes the count to one track, so the education app reports
+  /// "students active today" rather than everyone on the platform.
+  int activeToday({UserCategory? category}) {
     final todayKey = DailyProgress.dayKeyOf(DateTime.now());
+    final allowed = category == null ? null : _userIdsIn(category);
     var count = 0;
     for (final raw in _db.all(LocalDb.dailyProgress)) {
-      if (raw['day_key'] == todayKey) count++;
+      if (raw['day_key'] != todayKey) continue;
+      if (allowed != null && !allowed.contains(raw['user_id'] as String?)) {
+        continue;
+      }
+      count++;
     }
     return count;
   }
 
-  int totalLearners() {
+  int totalLearners({UserCategory? category}) {
     var count = 0;
     for (final raw in _db.all(LocalDb.users)) {
-      if (raw['category'] != null) count++;
+      final raw0 = raw['category'];
+      if (raw0 == null) continue;
+      if (category != null && raw0 != category.id) continue;
+      count++;
     }
     return count;
+  }
+
+  Set<String> _userIdsIn(UserCategory category) {
+    final ids = <String>{};
+    for (final raw in _db.all(LocalDb.users)) {
+      if (raw['category'] == category.id) {
+        final id = raw['id'] as String?;
+        if (id != null) ids.add(id);
+      }
+    }
+    return ids;
   }
 }

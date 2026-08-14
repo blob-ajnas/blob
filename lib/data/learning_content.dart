@@ -4,62 +4,12 @@ library;
 
 import 'dart:math';
 
-/// A single round of the "Quick Maths" / "Market Maths" game.
-typedef MathRound = ({String prompt, int answer, List<int> options});
+import 'task_types.dart';
 
-/// A term/definition pair for the "Match the Term" game.
-typedef TermPair = ({String term, String meaning});
-
-/// Ordered items for the sequencing game. [ordered] is the correct order;
-/// the screen shuffles it for presentation.
-typedef OrderRound = ({String prompt, List<String> ordered});
-
-class QuizQuestion {
-  final String question;
-  final List<String> options;
-  final int correctIndex;
-  final String explanation;
-
-  const QuizQuestion({
-    required this.question,
-    required this.options,
-    required this.correctIndex,
-    required this.explanation,
-  });
-
-  /// Returns the same question with its options in a random order.
-  ///
-  /// Every question below is authored with the answer first, which keeps the
-  /// source readable but would let a learner score 10/10 by tapping A ten
-  /// times — the quiz would measure nothing. Shuffling at presentation time
-  /// keeps authoring simple and the answer position unguessable.
-  QuizQuestion shuffled([Random? random]) {
-    final rng = random ?? Random();
-    final indices = List<int>.generate(options.length, (i) => i)..shuffle(rng);
-    return QuizQuestion(
-      question: question,
-      options: [for (final i in indices) options[i]],
-      correctIndex: indices.indexOf(correctIndex),
-      explanation: explanation,
-    );
-  }
-}
-
-class VideoLesson {
-  final String id;
-  final String title;
-  final String presenter;
-  final int minutes;
-  final String summary;
-
-  const VideoLesson({
-    required this.id,
-    required this.title,
-    required this.presenter,
-    required this.minutes,
-    required this.summary,
-  });
-}
+// Re-exported so existing importers of this library keep resolving MathRound,
+// TermPair and OrderRound. See task_types.dart for why neither content library
+// owns these shapes.
+export 'task_types.dart';
 
 class LearningContent {
   LearningContent._();
