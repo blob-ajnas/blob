@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../data/learning_content.dart';
 import '../../data/task_content_pack.dart';
 import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
@@ -363,7 +362,7 @@ class _QuizHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.card,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
@@ -403,7 +402,7 @@ class _QuizHeader extends StatelessWidget {
               value: current / total,
               minHeight: 7,
               backgroundColor: AppColors.primarySoft,
-              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
             ),
           ),
         ],
@@ -599,13 +598,13 @@ class _ReviewRow extends StatelessWidget {
             height: 22,
             width: 22,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.primarySoft,
             ),
             child: Text(
               '$number',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
                 color: AppColors.primary,

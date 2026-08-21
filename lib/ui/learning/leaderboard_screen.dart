@@ -170,7 +170,7 @@ class _PodiumColumn extends StatelessWidget {
           ),
           child: Text(
             _initials(entry.name),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w900,
               color: AppColors.primary,

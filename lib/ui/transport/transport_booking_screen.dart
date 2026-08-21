@@ -247,7 +247,7 @@ class _BookableVehicleCard extends StatelessWidget {
                 ),
                 Text(
                   '${Money.format(vehicle.ratePaise)}/${vehicle.rateUnit}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w900,
                     color: AppColors.primary,
@@ -442,7 +442,7 @@ class _BookingSheetState extends State<_BookingSheet> {
                     const Spacer(),
                     Text(
                       Money.format(_fare),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: AppColors.primary,

@@ -87,7 +87,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                 ),
                 trailing: Text(
                   c.dial,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),

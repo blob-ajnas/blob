@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../data/learning_content.dart' show VideoLesson;
 import '../../data/task_content_pack.dart';
 import '../../data/models/learning.dart';
 import '../../state/learning_controller.dart';

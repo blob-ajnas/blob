@@ -9,7 +9,6 @@ import '../../state/session_controller.dart';
 import '../admin/admin_screen.dart';
 import '../investors/investor_directory_screen.dart';
 import '../jobs/post_job_screen.dart';
-import '../learning/learn_dashboard.dart';
 import '../market/create_listing_screen.dart';
 import '../market/market_screen.dart';
 import '../payments/payments_screen.dart';
@@ -55,13 +54,9 @@ class RoleHome extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
               ],
-              // Learners see the daily challenge above their role workspace:
-              // the streak is time-sensitive, so it should not sit below a
-              // scroll fold.
-              if (user.category != null) ...[
-                const DailyChallengeCard(),
-                const SizedBox(height: 18),
-              ],
+              // The daily-challenge card was removed with the Learn tab: the
+              // education track is now a separate app, so learning content no
+              // longer appears on a marketplace dashboard.
               ..._bodyFor(context, user),
             ],
           ),
@@ -83,7 +78,27 @@ class RoleHome extends StatelessWidget {
       UserRole.vehicleRental => _rental(context, user),
       UserRole.propertyOwner => _property(context, user),
       UserRole.admin => _admin(context, user),
+      // Students are routed to EduShell by TrackRouter and never reach a
+      // marketplace dashboard. Handled explicitly rather than with a default
+      // so that adding a future role still fails the build until it is given
+      // a real dashboard.
+      UserRole.student => _student(context),
     };
+  }
+
+  /// Safety net only. Reaching this means a student was routed into the
+  /// marketplace shell, which is a routing bug — say so plainly instead of
+  /// rendering a blank or misleading agri dashboard.
+  List<Widget> _student(BuildContext context) {
+    return const [
+      EmptyState(
+        icon: Icons.school_outlined,
+        title: 'Student account',
+        message:
+            'Your account uses the student app. Reopen the app to continue, '
+            'or change this from Switch account type in your profile.',
+      ),
+    ];
   }
 
   // ---------------- Landowner ----------------

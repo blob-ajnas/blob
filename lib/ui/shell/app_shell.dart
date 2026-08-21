@@ -9,7 +9,6 @@ import '../../state/session_controller.dart';
 import '../admin/admin_screen.dart';
 import '../dashboards/role_home.dart';
 import '../jobs/jobs_screen.dart';
-import '../learning/learn_dashboard.dart';
 import '../market/market_screen.dart';
 import '../payments/payments_screen.dart';
 import '../profile/profile_screen.dart';
@@ -95,19 +94,11 @@ class _AppShellState extends State<AppShell> {
       ));
     }
 
-    // --- Learning platform ---
-    // Everyone who picked a category during signup (Student or Job Seeker)
-    // opted into the daily challenge, so Learn gets a guaranteed slot rather
-    // than competing with the generic tabs below — a streak-based feature is
-    // useless if it is buried two taps deep.
-    if (user.category != null) {
-      tabs.add(const NavDestination(
-        icon: Icons.school_outlined,
-        activeIcon: Icons.school,
-        labelKey: 'learn',
-        screen: LearnDashboard(),
-      ));
-    }
+    // NOTE: there is deliberately no "Learn" tab here. It used to open the
+    // education dashboard from inside the marketplace app, which made the two
+    // tracks a single blended product. They are now separate apps with
+    // separate shells; the only way across is "Switch account type" in
+    // Profile. See `TrackRouter`.
 
     // --- Generic tabs, added while slots remain ---
     void offer(bool allowed, NavDestination destination) {
@@ -188,7 +179,7 @@ class _AppShellState extends State<AppShell> {
         children: destinations.map((d) => d.screen).toList(),
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
         ),

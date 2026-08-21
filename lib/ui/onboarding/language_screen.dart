@@ -127,7 +127,7 @@ class _PreviewCard extends StatelessWidget {
           children: [
             Text(
               '${S.t(language, 'greeting')} 👋',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
                 color: AppColors.primary,

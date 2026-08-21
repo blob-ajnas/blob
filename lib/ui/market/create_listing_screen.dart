@@ -205,7 +205,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                         const SizedBox(height: 4),
                         Text(
                           Money.format(_totalPaise),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
                             color: AppColors.primary,

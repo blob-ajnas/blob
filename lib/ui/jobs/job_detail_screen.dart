@@ -49,7 +49,7 @@ class JobDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [AppColors.primary, AppColors.primaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -265,7 +265,7 @@ class _ApplicantRow extends StatelessWidget {
           children: [
             Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 18,
                   backgroundColor: AppColors.primarySoft,
                   child: Icon(

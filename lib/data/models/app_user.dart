@@ -78,6 +78,7 @@ class AppUser {
     UserCategory? category,
     String? aadhaarLast4,
     bool? aadhaarVerified,
+    bool clearSubtype = false,
   }) {
     return AppUser(
       id: id,
@@ -85,7 +86,10 @@ class AppUser {
       countryCode: countryCode,
       name: name ?? this.name,
       role: role ?? this.role,
-      subtype: subtype ?? this.subtype,
+      // A plain `subtype ?? this.subtype` cannot express "set this back to
+      // null", which switching to the student track needs: marketplace
+      // specialisations have no meaning there and would otherwise linger.
+      subtype: clearSubtype ? null : (subtype ?? this.subtype),
       laborerType: laborerType ?? this.laborerType,
       companyName: companyName ?? this.companyName,
       registrationNo: registrationNo ?? this.registrationNo,

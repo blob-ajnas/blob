@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/models/enums.dart';
 import '../../data/models/learning.dart';
 import '../widgets/common.dart';
 import 'role_selection_screen.dart';
@@ -34,7 +35,12 @@ class PendingStudentDetails {
 
 /// Step 3 — academic background. Every field is required.
 class StudentDetailsScreen extends StatefulWidget {
-  const StudentDetailsScreen({super.key});
+  /// When true the screen pops with the collected [PendingStudentDetails]
+  /// instead of continuing into signup. Used when an existing account switches
+  /// to the student track and only needs the academic details filled in.
+  final bool returnDetails;
+
+  const StudentDetailsScreen({super.key, this.returnDetails = false});
 
   @override
   State<StudentDetailsScreen> createState() => _StudentDetailsScreenState();
@@ -83,9 +89,17 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
       collegeName: _college.text.trim(),
       goals: _goals.text.trim(),
     );
+    if (widget.returnDetails) {
+      Navigator.of(context).pop(details);
+      return;
+    }
+    // Students skip marketplace role selection entirely: every role in that
+    // list is an agri-market role, and a student holds no marketplace
+    // capability. The role is fixed to UserRole.student here.
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => RoleSelectionScreen(
+        builder: (_) => ProfileSetupScreen(
+          role: UserRole.student,
           category: UserCategory.student,
           studentDetails: details,
         ),

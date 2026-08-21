@@ -295,7 +295,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.event_available_outlined,
                           color: AppColors.primary,
                         ),
@@ -312,7 +312,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                         ),
                         Text(
                           '${_availableFrom.day}/${_availableFrom.month}/${_availableFrom.year}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,
                             color: AppColors.primary,
@@ -345,7 +345,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                         const SizedBox(height: 4),
                         Text(
                           Money.format(_moveInPaise),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
                             color: AppColors.primary,
@@ -447,7 +447,7 @@ class _KindTile extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(
+              Icon(
                 Icons.check_circle,
                 size: 20,
                 color: AppColors.primary,

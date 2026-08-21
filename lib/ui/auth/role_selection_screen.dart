@@ -7,7 +7,7 @@ import '../../data/models/learning.dart';
 import '../../data/models/role_subtype.dart';
 import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
-import '../shell/app_shell.dart';
+import '../shell/track_router.dart';
 import '../widgets/common.dart';
 import 'student_details_screen.dart';
 
@@ -41,6 +41,17 @@ const kRoleMeta = <RoleMeta>[
       'Lease farm land, commercial space or housing'),
 ];
 
+/// Whether this screen is part of signup or is changing an existing account.
+enum RoleSelectionMode {
+  /// Signup: a new account is created at the end.
+  register,
+
+  /// An existing account is being converted to the marketplace track, so the
+  /// user record is updated in place and their id, phone, Aadhaar
+  /// verification, points, streak and history are all preserved.
+  switchExisting,
+}
+
 class RoleSelectionScreen extends StatefulWidget {
   /// Learning track chosen in Step 2. Carried through so the account is
   /// created with it in a single write.
@@ -50,10 +61,13 @@ class RoleSelectionScreen extends StatefulWidget {
   /// (the profile is keyed by user id, which does not exist until then).
   final PendingStudentDetails? studentDetails;
 
+  final RoleSelectionMode mode;
+
   const RoleSelectionScreen({
     super.key,
     this.category,
     this.studentDetails,
+    this.mode = RoleSelectionMode.register,
   });
 
   @override
@@ -185,6 +199,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               role: _selected!,
                               category: widget.category,
                               studentDetails: widget.studentDetails,
+                              mode: widget.mode,
                             ),
                           ),
                         ),
@@ -203,12 +218,14 @@ class ProfileSetupScreen extends StatefulWidget {
   final UserRole role;
   final UserCategory? category;
   final PendingStudentDetails? studentDetails;
+  final RoleSelectionMode mode;
 
   const ProfileSetupScreen({
     super.key,
     required this.role,
     this.category,
     this.studentDetails,
+    this.mode = RoleSelectionMode.register,
   });
 
   @override
@@ -239,10 +256,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   bool get _needsCrewSize =>
       _isLaborer && _subtype == RoleSubtype.singleAndGroup;
 
+  bool get _isSwitching => widget.mode == RoleSelectionMode.switchExisting;
+
   @override
   void initState() {
     super.initState();
     _subtype = RoleSubtypeX.defaultFor(widget.role);
+    // When converting an existing account, pre-fill from the current record so
+    // the user is not retyping their own name and district.
+    if (_isSwitching) {
+      final user = context.read<SessionController>().user;
+      if (user != null) {
+        _name.text = user.name;
+        _district.text = user.district;
+        _company.text = user.companyName ?? '';
+        _registration.text = user.registrationNo ?? '';
+        _country.text = user.country ?? '';
+      }
+    }
   }
 
   @override
@@ -260,6 +291,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     setState(() => _saving = true);
     final session = context.read<SessionController>();
     final learning = context.read<LearningController>();
+
+    if (_isSwitching) {
+      await _convertExisting(session);
+      return;
+    }
+
     final user = await session.register(
       name: _name.text,
       role: widget.role,
@@ -280,10 +317,45 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       await learning.saveProfile(details.toProfile(user.id));
     }
     if (!mounted) return;
+    // Routed through TrackRouter, not AppShell, so a student signup lands in
+    // the education app and a job seeker in the marketplace app.
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const AppShell()),
+      MaterialPageRoute<void>(builder: (_) => const TrackRouter()),
       (route) => false,
     );
+  }
+
+  /// Converts the signed-in account to the marketplace track in place.
+  ///
+  /// Updates rather than re-registers, so the id, phone, Aadhaar verification,
+  /// points, streak and history all survive the switch. Pops `true` so the
+  /// caller knows to rebuild from the track boundary.
+  Future<void> _convertExisting(SessionController session) async {
+    final current = session.user;
+    if (current == null) return;
+    await session.updateUser(
+      current.copyWith(
+        name: _name.text.trim(),
+        role: widget.role,
+        subtype: _subtype,
+        clearSubtype: _subtype == null,
+        district: _district.text.trim(),
+        laborerType: _needsCrewSize ? _laborerType : null,
+        companyName: _company.text.trim().isEmpty ? null : _company.text.trim(),
+        registrationNo:
+            _registration.text.trim().isEmpty ? null : _registration.text.trim(),
+        country: _country.text.trim().isEmpty ? null : _country.text.trim(),
+        category: UserCategory.jobSeeker,
+        // A role that needs vetting must go back to pending; silently keeping
+        // an old "approved" status would grant verified access to a role that
+        // was never reviewed.
+        verificationStatus: widget.role.requiresApproval
+            ? VerificationStatus.pending
+            : VerificationStatus.approved,
+      ),
+    );
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
   }
 
   @override

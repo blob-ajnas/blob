@@ -104,7 +104,7 @@ class _AadhaarScreenState extends State<AadhaarScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.verified_user_outlined,
+                    Icon(Icons.verified_user_outlined,
                         color: AppColors.primary, size: 26),
                     const SizedBox(width: 12),
                     Expanded(
@@ -170,13 +170,13 @@ class _AadhaarScreenState extends State<AadhaarScreen> {
                 const SizedBox(height: 22),
                 Row(
                   children: [
-                    const Icon(Icons.check_circle,
+                    Icon(Icons.check_circle,
                         color: AppColors.primary, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'OTP sent for ${session.pendingAadhaarMasked}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,

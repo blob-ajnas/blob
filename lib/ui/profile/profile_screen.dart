@@ -5,9 +5,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/money.dart';
 import '../../core/i18n/strings.dart';
 import '../../data/models/enums.dart';
+import '../../data/models/learning.dart';
 import '../../data/models/role_subtype.dart';
 import '../../state/marketplace_controller.dart';
 import '../../state/session_controller.dart';
+import '../auth/switch_account_type_screen.dart';
 import '../onboarding/language_screen.dart';
 import '../onboarding/welcome_screen.dart';
 import '../widgets/common.dart';
@@ -31,7 +33,7 @@ class ProfileScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [AppColors.primary, AppColors.primaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -95,7 +97,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           child: Text(
                             user.role.label.toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.primary,
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
@@ -185,8 +187,21 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
             ),
+            // The only route from the marketplace app into the education app.
+            // Deliberately here rather than as a tab: the two tracks are
+            // separate products, so crossing is an explicit account change.
             _Tile(
               icon: Icons.swap_horiz,
+              title: 'Switch account type',
+              subtitle: _switchSubtitle(user.category),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SwitchAccountTypeScreen(),
+                ),
+              ),
+            ),
+            _Tile(
+              icon: Icons.people_outline,
               title: 'Switch demo account',
               subtitle: 'Preview any role instantly',
               onTap: () => _switchAccount(context, market),
@@ -221,6 +236,17 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Names both sides of the switch so the row is self-explanatory. A user
+  /// whose category was never set is treated as a job seeker, matching how the
+  /// rest of the marketplace app reads a null category.
+  String _switchSubtitle(UserCategory? category) {
+    final current = category ?? UserCategory.jobSeeker;
+    final other = current == UserCategory.student
+        ? UserCategory.jobSeeker
+        : UserCategory.student;
+    return 'Currently ${current.label} \u00b7 change to ${other.label}';
   }
 
   void _switchAccount(BuildContext context, MarketplaceController market) {
@@ -263,7 +289,7 @@ class ProfileScreen extends StatelessWidget {
                         backgroundColor: AppColors.primarySoft,
                         child: Text(
                           u.name[0].toUpperCase(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w900,
                           ),

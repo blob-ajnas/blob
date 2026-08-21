@@ -9,7 +9,7 @@ import 'state/learning_controller.dart';
 import 'state/marketplace_controller.dart';
 import 'state/session_controller.dart';
 import 'ui/onboarding/welcome_screen.dart';
-import 'ui/shell/app_shell.dart';
+import 'ui/shell/track_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +32,9 @@ class BlobApp extends StatelessWidget {
       child: MaterialApp(
         title: 'BLOB',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
+        // Agri is the pre-login theme; signed-in users get their track's
+        // theme from TrackRouter, which overrides this for students.
+        theme: AppTheme.agri,
         home: const _Root(),
         builder: (context, child) {
           // Urdu, Kashmiri and Sindhi are right-to-left scripts; without this
@@ -55,7 +57,9 @@ class _Root extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
-    if (session.isLoggedIn) return const AppShell();
+    // TrackRouter, not AppShell: it picks the marketplace or education app
+    // from the user's category and applies the matching theme.
+    if (session.isLoggedIn) return const TrackRouter();
     return const WelcomeScreen();
   }
 }

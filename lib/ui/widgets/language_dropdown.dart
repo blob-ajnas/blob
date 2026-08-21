@@ -61,7 +61,7 @@ class LanguageDropdown extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.language,
+                  Icon(Icons.language,
                       size: 22, color: AppColors.primary),
                   const SizedBox(width: 12),
                   Expanded(
@@ -229,7 +229,7 @@ class _LanguageSheetState extends State<_LanguageSheet> {
                             ),
                           ),
                           trailing: isSelected
-                              ? const Icon(Icons.check_circle,
+                              ? Icon(Icons.check_circle,
                                   color: AppColors.primary)
                               : null,
                         );

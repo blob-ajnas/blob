@@ -88,7 +88,7 @@ class InvestorDirectoryScreen extends StatelessWidget {
                         ),
                         Text(
                           Money.format(i.amountPaise),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
                             color: AppColors.primary,
@@ -138,7 +138,7 @@ class _InvestorCard extends StatelessWidget {
                 color: AppColors.primarySoft,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.trending_up, color: AppColors.primary),
+              child: Icon(Icons.trending_up, color: AppColors.primary),
             ),
             const SizedBox(width: 12),
             Expanded(

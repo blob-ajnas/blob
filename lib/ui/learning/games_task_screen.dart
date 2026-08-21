@@ -109,7 +109,7 @@ class _GamesTaskScreenState extends State<GamesTaskScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.sports_esports,
+                  Icon(Icons.sports_esports,
                       color: AppColors.primary, size: 28),
                   const SizedBox(width: 12),
                   Expanded(
@@ -119,7 +119,7 @@ class _GamesTaskScreenState extends State<GamesTaskScreen> {
                         Text(
                           '$_roundsDoneToday of '
                           '${DailyTaskType.games.target} rounds done',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                             color: AppColors.primary,
@@ -695,14 +695,14 @@ class _GameProgress extends StatelessWidget {
               value: total == 0 ? 0 : current / total,
               minHeight: 7,
               backgroundColor: AppColors.border,
-              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
             ),
           ),
         ),
         const SizedBox(width: 12),
         Text(
           '$score $label',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12.5,
             fontWeight: FontWeight.w800,
             color: AppColors.primary,

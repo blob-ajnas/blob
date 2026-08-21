@@ -119,7 +119,7 @@ class _NotificationBell extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(
+              Icon(
                 Icons.notifications_none,
                 size: 23,
                 color: AppColors.primary,
@@ -177,7 +177,7 @@ class DashboardHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -264,7 +264,7 @@ class _RolePill extends StatelessWidget {
               user.role.shortLabel.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.primary,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
@@ -307,11 +307,11 @@ class _StatRing extends StatelessWidget {
             Container(
               width: 19,
               height: 19,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.primarySoft,
                 shape: BoxShape.circle,
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
                   '\u20B9',
                   style: TextStyle(
@@ -529,7 +529,7 @@ class ListingCard extends StatelessWidget {
                       children: [
                         Text(
                           '${Money.format(listing.pricePerQuintalPaise)} / quintal',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: AppColors.primary,
@@ -582,7 +582,7 @@ class CropThumb extends StatelessWidget {
         width: width,
         height: height,
         color: AppColors.primarySoft,
-        child: const Center(
+        child: Center(
           child: Icon(Icons.grass, color: AppColors.primary),
         ),
       ),
@@ -706,7 +706,7 @@ class _ListingPhotoCard extends StatelessWidget {
                         '${Money.format(listing.pricePerQuintalPaise)} / quintal',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           color: AppColors.primary,
@@ -832,7 +832,7 @@ class JobCard extends StatelessWidget {
                 children: [
                   Text(
                     '${Money.format(job.wagePerWorkerPaise)} per worker',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary,
@@ -970,7 +970,7 @@ class WorkTypeBanner extends StatelessWidget {
               children: [
                 Text(
                   type.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary,
@@ -1135,7 +1135,7 @@ class VehicleCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${Money.format(vehicle.ratePaise)} / ${vehicle.rateUnit}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary,
@@ -1210,7 +1210,7 @@ class BookingCard extends StatelessWidget {
               children: [
                 Text(
                   Money.format(booking.farePaise),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                     color: AppColors.primary,
@@ -1287,7 +1287,7 @@ class InvestmentCard extends StatelessWidget {
               children: [
                 Text(
                   Money.format(investment.amountPaise),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                     color: AppColors.primary,
@@ -1318,7 +1318,7 @@ class ExporterBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.verified, color: AppColors.primary, size: 28),
+          Icon(Icons.verified, color: AppColors.primary, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1326,7 +1326,7 @@ class ExporterBanner extends StatelessWidget {
               children: [
                 Text(
                   user.companyName ?? user.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary,
@@ -1647,7 +1647,7 @@ class PropertyCard extends StatelessWidget {
                   children: [
                     Text(
                       '${Money.format(property.rentPerMonthPaise)} / month',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                         color: AppColors.primary,
@@ -1768,7 +1768,7 @@ Future<void> _openEnquirySheet(
                   child: Center(
                     child: Text(
                       '$months months',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
                         color: AppColors.primary,
@@ -1815,7 +1815,7 @@ Future<void> _openEnquirySheet(
                   ),
                   Text(
                     Money.format(property.rentPerMonthPaise * months),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: AppColors.primary,

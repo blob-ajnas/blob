@@ -43,7 +43,7 @@ class ListingDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [AppColors.primary, AppColors.primaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -199,7 +199,7 @@ class ListingDetailScreen extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 Money.format(listing.totalPaise),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   color: AppColors.primary,
