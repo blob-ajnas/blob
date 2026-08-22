@@ -2,12 +2,17 @@ import 'dart:math';
 
 import 'package:blob/core/i18n/strings.dart';
 import 'package:blob/core/rbac/permissions.dart';
+import 'package:blob/core/theme/app_colors.dart';
 import 'package:blob/core/utils/money.dart';
 import 'package:blob/data/learning_content.dart';
+import 'package:blob/data/models/app_user.dart';
 import 'package:blob/data/models/enums.dart';
 import 'package:blob/data/models/learning.dart';
 import 'package:blob/data/models/role_subtype.dart';
+import 'package:blob/data/task_content_pack.dart';
 import 'package:blob/services/aadhaar_service.dart';
+import 'package:blob/ui/shell/track_router.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -117,9 +122,27 @@ void main() {
   });
 
   group('Capability RBAC', () {
-    test('every role has a permission set', () {
+    test('every marketplace role has a permission set', () {
       for (final role in UserRole.values) {
+        if (role == UserRole.student) continue;
         expect(Rbac.of(role), isNotEmpty, reason: 'role ${role.name}');
+      }
+    });
+
+    test('students hold no marketplace capability at all', () {
+      // This empty set is the enforcement point that keeps the education app
+      // free of crops, jobs, transport, property and payments: every
+      // marketplace tab and action is gated on a permission, so there is
+      // nothing to individually hide. Asserted explicitly because an
+      // accidental grant here would silently leak marketplace surfaces into a
+      // student's app.
+      expect(Rbac.of(UserRole.student), isEmpty);
+      for (final permission in Permission.values) {
+        expect(
+          Rbac.can(UserRole.student, permission),
+          isFalse,
+          reason: 'student must not hold ${permission.name}',
+        );
       }
     });
 
@@ -517,6 +540,144 @@ void main() {
       }
       expect(UserCategoryX.tryFromId('teacher'), isNull);
       expect(UserCategoryX.tryFromId(null), isNull);
+    });
+  });
+
+  group('Two separate apps', () {
+    AppUser userWith(UserCategory? category, UserRole role) => AppUser(
+      id: 'u_test',
+      phone: '+919000000000',
+      countryCode: '+91',
+      name: 'Test Person',
+      role: role,
+      district: 'Mandya',
+      category: category,
+      createdAt: DateTime(2024, 1, 1),
+    );
+
+    test('category alone decides which app opens', () {
+      expect(
+        AppTrack.of(userWith(UserCategory.student, UserRole.student)),
+        AppTrack.education,
+      );
+      expect(
+        AppTrack.of(userWith(UserCategory.jobSeeker, UserRole.laborer)),
+        AppTrack.marketplace,
+      );
+      // A user who never picked a category (e.g. seeded marketplace accounts)
+      // must land in the marketplace app, not a half-configured edu app.
+      expect(
+        AppTrack.of(userWith(null, UserRole.landowner)),
+        AppTrack.marketplace,
+      );
+    });
+
+    test('the two tracks use visibly different brand colours', () {
+      // The user asked for green for job seekers and blue for students; if
+      // these ever collide the tracks stop being distinguishable at a glance.
+      expect(
+        AppTrack.education.palette.primary,
+        isNot(AppTrack.marketplace.palette.primary),
+      );
+      expect(const EduPalette().primary, const Color(0xFF12468F));
+      expect(const AgriPalette().primary, const Color(0xFF1B5E20));
+    });
+
+    test('applyPalette re-points the brand colours and is reversible', () {
+      AppColors.applyPalette(const EduPalette());
+      expect(AppColors.primary, const EduPalette().primary);
+      expect(AppColors.background, const EduPalette().background);
+
+      AppColors.applyPalette(const AgriPalette());
+      expect(AppColors.primary, const AgriPalette().primary);
+      expect(AppColors.background, const AgriPalette().background);
+    });
+
+    test('education content shares no material with the marketplace', () {
+      // The whole point of the split: a student must never see crop, mandi,
+      // commission or labour material.
+      final eduQuiz = TaskContentPack.education.quiz
+          .map((q) => q.question)
+          .toList();
+      final marketQuiz = TaskContentPack.marketplace.quiz
+          .map((q) => q.question)
+          .toList();
+      for (final q in eduQuiz) {
+        expect(marketQuiz, isNot(contains(q)));
+      }
+      expect(
+        TaskContentPack.education.video.id,
+        isNot(TaskContentPack.marketplace.video.id),
+      );
+      // Money formatting is a marketplace-only concern.
+      expect(TaskContentPack.education.mathAnswersAreMoney, isFalse);
+      expect(TaskContentPack.marketplace.mathAnswersAreMoney, isTrue);
+    });
+
+    test('education content carries no marketplace vocabulary', () {
+      const banned = [
+        'crop', 'mandi', 'commission', 'harvest', 'quintal', 'fertiliser',
+        'soil', 'labour', 'labourer', 'export', 'broker', 'tractor',
+      ];
+      final pack = TaskContentPack.education;
+      final corpus = [
+        pack.video.title,
+        pack.video.summary,
+        pack.mathTitle,
+        pack.mathSubtitle,
+        pack.matchTitle,
+        pack.matchSubtitle,
+        pack.orderTitle,
+        pack.orderSubtitle,
+        pack.quizSubject,
+        for (final q in pack.quiz) ...[q.question, ...q.options],
+        for (final r in pack.mathRounds) r.prompt,
+        for (final t in pack.termPairs) ...[t.term, t.meaning],
+        for (final o in pack.orderRounds) ...[o.prompt, ...o.ordered],
+      ].join(' ').toLowerCase();
+
+      for (final word in banned) {
+        expect(
+          RegExp(r'\b' + word + r'\b').hasMatch(corpus),
+          isFalse,
+          reason: 'education content must not mention "$word"',
+        );
+      }
+    });
+
+    test('every education game round is playable', () {
+      final pack = TaskContentPack.education;
+      expect(pack.quiz.length, 10);
+
+      for (final r in pack.mathRounds) {
+        expect(r.options, contains(r.answer),
+            reason: 'unanswerable round: ${r.prompt}');
+        expect(r.options.toSet().length, r.options.length,
+            reason: 'duplicate options: ${r.prompt}');
+      }
+      for (final o in pack.orderRounds) {
+        // A single-item or duplicated sequence cannot be meaningfully ordered.
+        expect(o.ordered.length, greaterThanOrEqualTo(3), reason: o.prompt);
+        expect(o.ordered.toSet().length, o.ordered.length, reason: o.prompt);
+      }
+      expect(pack.termPairs.length, greaterThanOrEqualTo(3));
+    });
+
+    test('switching account type can clear a marketplace specialisation', () {
+      // copyWith's `??` pattern cannot express "set back to null", which the
+      // switch to the student track needs.
+      final buyer = userWith(UserCategory.jobSeeker, UserRole.buyer)
+          .copyWith(subtype: RoleSubtype.retailMarketBuyer);
+      expect(buyer.subtype, isNotNull);
+
+      final student = buyer.copyWith(
+        role: UserRole.student,
+        category: UserCategory.student,
+        clearSubtype: true,
+      );
+      expect(student.subtype, isNull);
+      expect(student.isStudent, isTrue);
+      expect(Rbac.of(student.role), isEmpty);
     });
   });
 }

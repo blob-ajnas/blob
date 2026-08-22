@@ -18,7 +18,10 @@ class Seed {
   // Bumped to v5: adds learning-platform accounts, student profiles, daily
   // progress and activity history, so existing installs must re-seed to pick
   // up a populated leaderboard.
-  static const _kSeeded = 'seed_v5';
+  // v6: students moved onto UserRole.student. Existing installs seeded at v5
+  // hold students on marketplace roles, which would put them in the wrong app,
+  // so the bump forces a re-seed.
+  static const _kSeeded = 'seed_v6';
 
   static Future<void> ensure() async {
     final db = LocalDb.instance;
@@ -249,19 +252,16 @@ class Seed {
       // puts them on the leaderboard. Sign in as +919845050001 to land on a
       // student account with an existing streak and history.
       //
-      // NOTE: UserRole has no `student` value, so every learner still picks a
-      // marketplace role at signup. Students are seeded as labourers/buyers
-      // because that matches the real audience (students taking part-time farm
-      // work), but see the note in the accompanying summary — whether students
-      // should get a dedicated role is a product decision.
+      // Students hold UserRole.student, which maps to an empty permission set,
+      // so no marketplace surface is reachable from their app at all. They
+      // deliberately carry no subtype or laborerType: those are marketplace
+      // specialisations and mean nothing on the education track.
       AppUser(
         id: 'u_student_1',
         phone: '+919845050001',
         countryCode: '+91',
         name: 'Divya S',
-        role: UserRole.laborer,
-        subtype: RoleSubtype.dailyHarvestWork,
-        laborerType: LaborerType.singleWorker,
+        role: UserRole.student,
         district: 'Mandya',
         category: UserCategory.student,
         aadhaarLast4: '4821',
@@ -273,9 +273,7 @@ class Seed {
         phone: '+919845050002',
         countryCode: '+91',
         name: 'Arjun Patil',
-        role: UserRole.laborer,
-        subtype: RoleSubtype.skilledFieldOperator,
-        laborerType: LaborerType.singleWorker,
+        role: UserRole.student,
         district: 'Belagavi',
         category: UserCategory.student,
         aadhaarLast4: '9037',
@@ -287,8 +285,7 @@ class Seed {
         phone: '+919845050003',
         countryCode: '+91',
         name: 'Fathima Noor',
-        role: UserRole.buyer,
-        subtype: RoleSubtype.retailMarketBuyer,
+        role: UserRole.student,
         district: 'Mysuru',
         category: UserCategory.student,
         aadhaarLast4: '2765',
