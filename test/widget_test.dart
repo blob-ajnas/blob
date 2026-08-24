@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:blob/core/i18n/strings.dart';
 import 'package:blob/core/rbac/permissions.dart';
 import 'package:blob/core/theme/app_colors.dart';
 import 'package:blob/core/utils/money.dart';
+import 'package:blob/data/edu_content.dart';
 import 'package:blob/data/learning_content.dart';
 import 'package:blob/data/models/app_user.dart';
 import 'package:blob/data/models/enums.dart';
@@ -555,6 +557,52 @@ void main() {
       createdAt: DateTime(2024, 1, 1),
     );
 
+    // A source-level guard, because the bug it catches is a wiring mistake no
+    // unit test on AppTrack can see: a screen that pushes `AppShell()` itself
+    // sends every user to the green marketplace, so a returning student
+    // silently reopens the agri market. This was a real defect in
+    // otp_screen.dart. Routing must always go through TrackRouter, which means
+    // TrackRouter stays the only file allowed to name AppShell.
+    test('TrackRouter is the only route into the marketplace shell', () {
+      final offenders = <String>[];
+      for (final entry in Directory('lib').listSync(recursive: true)) {
+        if (entry is! File || !entry.path.endsWith('.dart')) continue;
+        if (entry.path.endsWith('ui/shell/app_shell.dart')) continue;
+        if (entry.path.endsWith('ui/shell/track_router.dart')) continue;
+        if (entry.readAsStringSync().contains('AppShell(')) {
+          offenders.add(entry.path);
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'These files construct AppShell directly and would bypass the '
+            'student/job-seeker split. Navigate to TrackRouter instead: '
+            '$offenders',
+      );
+    });
+
+    // The completion green (0xFF2E7D32) was byte-identical to
+    // AgriPalette.primaryLight, so tick badges and progress bars in the shared
+    // learning screens rendered agri brand green inside the blue student app.
+    test('completion chrome never shows agri green in the education app', () {
+      const agri = AgriPalette();
+      const edu = EduPalette();
+      expect(edu.success, isNot(agri.success));
+      // Specifically, the edu "done" colour must not be any agri brand colour.
+      expect(
+        [agri.primary, agri.primaryLight, agri.primaryDark],
+        isNot(contains(edu.success)),
+        reason: 'edu success colour is reusing an agri brand green',
+      );
+      // And applyPalette must actually move it, or the leak returns at runtime.
+      AppColors.applyPalette(edu);
+      expect(AppColors.success, edu.success);
+      AppColors.applyPalette(agri);
+      expect(AppColors.success, agri.success);
+    });
+
     test('category alone decides which app opens', () {
       expect(
         AppTrack.of(userWith(UserCategory.student, UserRole.student)),
@@ -621,6 +669,12 @@ void main() {
       ];
       final pack = TaskContentPack.education;
       final corpus = [
+        // The seeded history title is included because the content pack alone
+        // was clean while the student Progress tab still showed "Watched: Soil
+        // Health & Crop Rotation Basics" — the agri lesson was hardcoded in the
+        // seeder, so scanning only the pack missed a visible leak.
+        'Watched: ${EduContent.todaysVideo.title}',
+        EduContent.todaysVideo.presenter,
         pack.video.title,
         pack.video.summary,
         pack.mathTitle,

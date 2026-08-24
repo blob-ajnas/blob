@@ -502,7 +502,7 @@ class _AnswerTile extends StatelessWidget {
                 ),
               ),
               if (state == _AnswerState.correct)
-                const Icon(
+                Icon(
                   Icons.check_circle_rounded,
                   size: 20,
                   color: AppColors.success,
@@ -628,7 +628,7 @@ class _ReviewRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   question.options[question.correctIndex],
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.success,

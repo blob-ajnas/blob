@@ -152,7 +152,7 @@ class StatusPill extends StatelessWidget {
 
   factory StatusPill.payment(PaymentStatus status) {
     return switch (status) {
-      PaymentStatus.cleared => const StatusPill(
+      PaymentStatus.cleared => StatusPill(
         label: 'Cleared',
         color: AppColors.success,
         background: AppColors.clearedSoft,

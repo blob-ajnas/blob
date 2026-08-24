@@ -41,6 +41,7 @@ class AppColors {
     primarySoft = palette.primarySoft;
     background = palette.background;
     border = palette.border;
+    success = palette.success;
   }
 
   static const Color surface = Color(0xFFFFFFFF);
@@ -50,7 +51,9 @@ class AppColors {
   static const Color textSecondary = Color(0xFF5C6B5E);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
-  static const Color success = Color(0xFF2E7D32);
+  // Re-pointed per track by applyPalette, so completion chrome in the shared
+  // learning screens follows the active app's brand instead of forcing green.
+  static Color success = _agri.success;
   static const Color warning = Color(0xFFB26A00);
   static const Color danger = Color(0xFFB3261E);
   static const Color info = Color(0xFF1565C0);
@@ -81,6 +84,15 @@ abstract class AppPalette {
   Color get primarySoft;
   Color get background;
   Color get border;
+
+  /// Completion / "done" chrome: progress bars, tick badges, finished cards.
+  ///
+  /// Track-scoped rather than a fixed green, because the shared learning
+  /// screens (tasks, quiz) render in both apps. A fixed green put agri brand
+  /// colour — literally the same 0xFF2E7D32 as [AgriPalette.primaryLight] —
+  /// inside the blue student app, which is the cross-branding this split
+  /// exists to prevent.
+  Color get success;
 }
 
 /// Agri marketplace — dark green, chosen for legibility in direct sunlight.
@@ -99,6 +111,8 @@ class AgriPalette extends AppPalette {
   Color get background => const Color(0xFFF6F8F6);
   @override
   Color get border => const Color(0xFFD9E2DA);
+  @override
+  Color get success => const Color(0xFF2E7D32);
 }
 
 /// Education track — blue. Contrast ratios are held at the same level as the
@@ -119,4 +133,8 @@ class EduPalette extends AppPalette {
   Color get background => const Color(0xFFF5F7FB);
   @override
   Color get border => const Color(0xFFD5DEEC);
+  // A blue-green teal: still reads as "done" without dragging agri green into
+  // the education app.
+  @override
+  Color get success => const Color(0xFF0F7B6C);
 }

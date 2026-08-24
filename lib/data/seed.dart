@@ -3,6 +3,8 @@ import 'local_db.dart';
 import 'models/app_user.dart';
 import 'models/enums.dart';
 import 'models/job.dart';
+import 'edu_content.dart';
+import 'learning_content.dart';
 import 'models/learning.dart';
 import 'models/ledger.dart';
 import 'models/listing.dart';
@@ -21,7 +23,10 @@ class Seed {
   // v6: students moved onto UserRole.student. Existing installs seeded at v5
   // hold students on marketplace roles, which would put them in the wrong app,
   // so the bump forces a re-seed.
-  static const _kSeeded = 'seed_v6';
+  // v7: seeded video history is now per-track. v6 installs recorded an agri
+  // lesson title for students, surfacing agri-market content in the education
+  // app's Progress tab, so the bump forces a re-seed.
+  static const _kSeeded = 'seed_v7';
 
   static Future<void> ensure() async {
     final db = LocalDb.instance;
@@ -985,6 +990,14 @@ class Seed {
 
       if (plan.video >= DailyTaskType.video.target) {
         activitySeq++;
+        // Seeded history must match the track the user actually studies in.
+        // A single hardcoded agri title put "Soil Health & Crop Rotation" in
+        // the student Progress tab, i.e. agri-market content inside the
+        // education app.
+        final isStudent = plan.userId.startsWith('u_student_');
+        final watched = isStudent
+            ? EduContent.todaysVideo.title
+            : LearningContent.todaysVideo.title;
         await db.put(
           LocalDb.activities,
           'act_seed_$activitySeq',
@@ -992,7 +1005,7 @@ class Seed {
             id: 'act_seed_$activitySeq',
             userId: plan.userId,
             type: DailyTaskType.video,
-            title: 'Watched: Soil Health & Crop Rotation Basics',
+            title: 'Watched: $watched',
             points: DailyTaskType.video.points,
             createdAt: base,
           ).toMap(),

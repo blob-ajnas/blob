@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../state/session_controller.dart';
-import '../shell/app_shell.dart';
+import '../shell/track_router.dart';
 import '../widgets/common.dart';
 import 'aadhaar_screen.dart';
 
@@ -65,8 +65,11 @@ class _OtpScreenState extends State<OtpScreen> {
     }
 
     if (result.existing != null) {
+      // Land on TrackRouter, never AppShell directly: a returning student must
+      // reopen the blue education app, and hardcoding the marketplace shell
+      // here would drop them into the agri market whatever their category.
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AppShell()),
+        MaterialPageRoute<void>(builder: (_) => const TrackRouter()),
         (route) => false,
       );
     } else {
