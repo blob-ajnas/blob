@@ -18,6 +18,7 @@ import '../market/listing_detail_screen.dart';
 import '../jobs/job_detail_screen.dart';
 import '../widgets/brand.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 import '../../core/utils/crop_images.dart';
 
 final _dateFmt = DateFormat('d MMM');
@@ -64,18 +65,18 @@ class HomeTopBar extends StatelessWidget {
               ],
             ),
           ),
-          Icon(
-            Icons.location_on_outlined,
-            size: 15,
-            color: AppColors.textSecondary,
-          ),
-          const SizedBox(width: 2),
+          // The header location doubles as the shortcut to "where am I on the
+          // map", so the pin and the name are one tap target.
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 110),
-            child: Text(
-              user.district,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            constraints: const BoxConstraints(maxWidth: 124),
+            child: PlaceLink(
+              name: user.city?.trim().isNotEmpty == true
+                  ? user.city!
+                  : user.district,
+              subtitle: user.city?.trim().isNotEmpty == true
+                  ? user.district
+                  : user.stateName,
+              icon: Icons.location_on_outlined,
               style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -1183,15 +1184,42 @@ class BookingCard extends StatelessWidget {
           children: [
             Row(
               children: [
+                // Both ends of the trip are place names, so both link to the
+                // map independently. A pickup point that is a landmark rather
+                // than a town simply renders as plain text.
                 Expanded(
-                  child: Text(
-                    '${booking.pickup} → ${booking.drop}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: PlaceLink(
+                          name: booking.pickup,
+                          subtitle: 'Pickup',
+                          showIcon: false,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        ' → ',
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Flexible(
+                        child: PlaceLink(
+                          name: booking.drop,
+                          subtitle: 'Drop',
+                          showIcon: false,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 StatusPill.text(booking.status.label),
@@ -1599,12 +1627,34 @@ class PropertyCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        '${property.locality} · ${property.district}',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textSecondary,
-                        ),
+                      // Locality is free text typed by the owner, so it is not
+                      // reliably mappable; the district behind it always is.
+                      // Only that half links, with the locality carried into
+                      // the map screen as context.
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${property.locality} · ',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          PlaceLink(
+                            name: property.district,
+                            subtitle:
+                                '${property.locality} · ${property.title}',
+                            iconSize: 12,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

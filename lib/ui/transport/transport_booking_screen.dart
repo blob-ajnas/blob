@@ -12,6 +12,7 @@ import '../../state/marketplace_controller.dart';
 import '../../state/session_controller.dart';
 import '../dashboards/dashboard_parts.dart';
 import '../widgets/common.dart';
+import '../widgets/location_picker.dart';
 
 /// One booking flow that serves all three vehicle verticals — goods
 /// transport, taxi rides and self-drive rentals. The category decides the
@@ -349,22 +350,18 @@ class _BookingSheetState extends State<_BookingSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            TextField(
+            // Suggests gazetteer places so the booking can be mapped later,
+            // but still accepts a warehouse or landmark name a closed list
+            // would not contain.
+            PlaceAutocompleteField(
               controller: _pickup,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: _isRental ? 'Pickup branch' : 'Pickup location',
-                prefixIcon: const Icon(Icons.trip_origin, size: 20),
-              ),
+              label: _isRental ? 'Pickup branch' : 'Pickup location',
+              prefixIcon: Icons.trip_origin,
             ),
             const SizedBox(height: 12),
-            TextField(
+            PlaceAutocompleteField(
               controller: _drop,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: _isRental ? 'Return branch' : 'Drop location',
-                prefixIcon: const Icon(Icons.place_outlined),
-              ),
+              label: _isRental ? 'Return branch' : 'Drop location',
             ),
             const SizedBox(height: 12),
             TextField(

@@ -33,7 +33,8 @@ class PendingStudentDetails {
       );
 }
 
-/// Step 3 — academic background. Every field is required.
+/// Step 3 — academic background. Everything except the free-text goals is
+/// required.
 class StudentDetailsScreen extends StatefulWidget {
   /// When true the screen pops with the collected [PendingStudentDetails]
   /// instead of continuing into signup. Used when an existing account switches
@@ -133,7 +134,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
               const SizedBox(height: 6),
               const Text(
                 'We use this to match your daily tasks and quizzes to your '
-                'level. All fields are required.',
+                'level. Your goals are optional — you can add them later.',
                 style: TextStyle(
                   fontSize: 13.5,
                   height: 1.4,
@@ -195,7 +196,10 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
               ),
               const SizedBox(height: 18),
 
-              const _FieldLabel('Your goals & aspirations'),
+              const _FieldLabel('Your goals & aspirations', optional: true),
+              // Deliberately unvalidated. A student who does not yet know what
+              // they want to become should still be able to finish signing up,
+              // so this field accepts anything, including nothing at all.
               TextFormField(
                 controller: _goals,
                 maxLines: 4,
@@ -207,14 +211,6 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       'help farmers in my district get better prices.',
                   alignLabelWithHint: true,
                 ),
-                validator: (v) {
-                  final base = _required(v, 'Goals');
-                  if (base != null) return base;
-                  if (v!.trim().length < 15) {
-                    return 'Tell us a little more — at least 15 characters';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 8),
 
@@ -235,13 +231,17 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
 
 class _FieldLabel extends StatelessWidget {
   final String text;
-  const _FieldLabel(this.text);
+
+  /// Appends an "(optional)" hint so a blank field never looks like an
+  /// oversight the form is about to complain about.
+  final bool optional;
+  const _FieldLabel(this.text, {this.optional = false});
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(
-          text,
+          optional ? '$text (optional)' : text,
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,

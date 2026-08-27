@@ -13,6 +13,7 @@ import '../auth/switch_account_type_screen.dart';
 import '../onboarding/language_screen.dart';
 import '../onboarding/welcome_screen.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -135,11 +136,26 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
+            if (user.city != null && user.city!.trim().isNotEmpty)
+              _Row(
+                icon: Icons.location_city_outlined,
+                label: 'City / town',
+                value: user.city!,
+                isPlace: true,
+              ),
             _Row(
               icon: Icons.location_on_outlined,
               label: 'District',
               value: user.district,
+              isPlace: true,
             ),
+            if (user.stateName != null && user.stateName!.trim().isNotEmpty)
+              _Row(
+                icon: Icons.map_outlined,
+                label: 'State',
+                value: user.stateName!,
+                isPlace: true,
+              ),
             if (user.subtype != null)
               _Row(
                 icon: user.subtype!.icon,
@@ -163,6 +179,7 @@ class ProfileScreen extends StatelessWidget {
                 icon: Icons.public,
                 label: 'Country',
                 value: user.country!,
+                isPlace: true,
               ),
             _Row(
               icon: Icons.verified_user_outlined,
@@ -324,10 +341,16 @@ class _Row extends StatelessWidget {
   final String label;
   final String value;
 
+  /// When true the value is rendered as a [PlaceLink], so tapping it opens the
+  /// place on a map. Names the gazetteer does not know fall back to plain text
+  /// automatically, so this is safe to set on any location-shaped field.
+  final bool isPlace;
+
   const _Row({
     required this.icon,
     required this.label,
     required this.value,
+    this.isPlace = false,
   });
 
   @override
@@ -347,15 +370,31 @@ class _Row extends StatelessWidget {
           ),
           const Spacer(),
           Flexible(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: isPlace
+                ? Align(
+                    alignment: Alignment.centerRight,
+                    child: PlaceLink(
+                      name: value,
+                      subtitle: label,
+                      // The row already carries a location icon on the left;
+                      // a second pin here would just be noise. Colour and
+                      // underline carry the affordance instead.
+                      showIcon: false,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
         ],
       ),

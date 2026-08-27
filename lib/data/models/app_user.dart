@@ -16,6 +16,13 @@ class AppUser {
   final String? registrationNo; // exporter company registration
   final String? country; // for foreign investor / exporter
   final String district;
+
+  /// State and city/town/village, both chosen from the [Gazetteer] at signup.
+  /// Nullable because accounts created before location became a dropdown only
+  /// recorded a district; `stateName` back-fills from the gazetteer on demand
+  /// rather than being guessed at read time.
+  final String? stateName;
+  final String? city;
   final VerificationStatus verificationStatus;
   final int freeJobPostsUsed;
 
@@ -37,6 +44,8 @@ class AppUser {
     required this.role,
     required this.district,
     required this.createdAt,
+    this.stateName,
+    this.city,
     this.subtype,
     this.laborerType,
     this.companyName,
@@ -73,6 +82,8 @@ class AppUser {
     String? registrationNo,
     String? country,
     String? district,
+    String? stateName,
+    String? city,
     VerificationStatus? verificationStatus,
     int? freeJobPostsUsed,
     UserCategory? category,
@@ -95,6 +106,8 @@ class AppUser {
       registrationNo: registrationNo ?? this.registrationNo,
       country: country ?? this.country,
       district: district ?? this.district,
+      stateName: stateName ?? this.stateName,
+      city: city ?? this.city,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       freeJobPostsUsed: freeJobPostsUsed ?? this.freeJobPostsUsed,
       category: category ?? this.category,
@@ -116,6 +129,8 @@ class AppUser {
     'registration_no': registrationNo,
     'country': country,
     'district': district,
+    'state_name': stateName,
+    'city': city,
     'verification_status': verificationStatus.name,
     'free_job_posts_used': freeJobPostsUsed,
     'category': category?.name,
@@ -138,6 +153,8 @@ class AppUser {
     registrationNo: m['registration_no'] as String?,
     country: m['country'] as String?,
     district: m['district'] as String? ?? '',
+    stateName: m['state_name'] as String?,
+    city: m['city'] as String?,
     verificationStatus:
         VerificationStatusX.fromId(m['verification_status'] as String? ?? 'approved'),
     freeJobPostsUsed: (m['free_job_posts_used'] as num?)?.toInt() ?? 0,

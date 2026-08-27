@@ -6,6 +6,7 @@ import '../../data/models/learning.dart';
 import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 
 /// Step 5a — leaderboard: recent winners and top performers.
 ///
@@ -324,14 +325,29 @@ class _BoardRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  '${entry.category.label} \u00b7 ${entry.district}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textSecondary,
-                  ),
+                // Split so only the district half is tappable; the category is
+                // not a place and should not look like one.
+                Row(
+                  children: [
+                    Text(
+                      '${entry.category.label} \u00b7 ',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Flexible(
+                      child: PlaceLink(
+                        name: entry.district,
+                        subtitle: entry.name,
+                        iconSize: 12,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

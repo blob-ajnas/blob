@@ -6,6 +6,7 @@ import '../../data/models/learning.dart';
 import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 
 /// Education track — "Compete" tab.
 ///
@@ -508,10 +509,10 @@ class _BoardRow extends StatelessWidget {
                 // Every row here is a student, so the category label would be
                 // the same on all of them; the district alone is the useful
                 // distinguisher.
-                Text(
-                  entry.district,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                PlaceLink(
+                  name: entry.district,
+                  subtitle: entry.name,
+                  iconSize: 12,
                   style: const TextStyle(
                     fontSize: 11.5,
                     color: AppColors.textSecondary,

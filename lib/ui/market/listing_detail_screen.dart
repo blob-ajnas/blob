@@ -11,6 +11,7 @@ import '../../data/models/listing.dart';
 import '../../state/marketplace_controller.dart';
 import '../../state/session_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 
 class ListingDetailScreen extends StatelessWidget {
   final Listing listing;
@@ -100,6 +101,8 @@ class ListingDetailScreen extends StatelessWidget {
               icon: Icons.location_on_outlined,
               label: 'District',
               value: listing.district,
+              isPlace: true,
+              placeSubtitle: '${listing.cropName} · ${listing.ownerName}',
             ),
             _DetailRow(
               icon: Icons.sell_outlined,
@@ -335,10 +338,19 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
+  /// Renders the value as a tappable [PlaceLink] that opens a map. Unknown
+  /// names degrade to plain text, so this is safe on any location field.
+  final bool isPlace;
+
+  /// Context line for the map screen, e.g. the crop being sold here.
+  final String? placeSubtitle;
+
   const _DetailRow({
     required this.icon,
     required this.label,
     required this.value,
+    this.isPlace = false,
+    this.placeSubtitle,
   });
 
   @override
@@ -358,14 +370,27 @@ class _DetailRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            child: isPlace
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: PlaceLink(
+                      name: value,
+                      subtitle: placeSubtitle,
+                      showIcon: false,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
           ),
         ],
       ),

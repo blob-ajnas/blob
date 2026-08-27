@@ -7,6 +7,7 @@ import '../../data/models/enums.dart';
 import '../../state/marketplace_controller.dart';
 import '../../state/session_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 
 /// Landowner tool to discover and connect with foreign investors.
 class InvestorDirectoryScreen extends StatelessWidget {
@@ -153,14 +154,31 @@ class _InvestorCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    '$company · $country',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppColors.textSecondary,
-                    ),
+                  // Only the country half is tappable — the company name is
+                  // not a place.
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '$company · ',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      PlaceLink(
+                        name: country,
+                        subtitle: '$name · $company',
+                        iconSize: 12,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

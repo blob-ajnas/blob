@@ -9,7 +9,9 @@ import '../../state/session_controller.dart';
 import '../auth/switch_account_type_screen.dart';
 import '../onboarding/language_screen.dart';
 import '../onboarding/welcome_screen.dart';
+import '../../data/gazetteer.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 
 /// Education track — "Profile" tab.
 ///
@@ -49,6 +51,7 @@ class EduProfileScreen extends StatelessWidget {
               name: user.name,
               currentClass: profile?.currentClass ?? 'Student',
               district: user.district,
+              city: user.city,
             ),
             const SizedBox(height: 18),
             const SectionHeader('My learning'),
@@ -117,11 +120,36 @@ class EduProfileScreen extends StatelessWidget {
                       label: '10th marks card',
                       value: profile.tenthMarksCardNumber,
                     ),
+                    if (user.city != null && user.city!.trim().isNotEmpty)
+                      _Row(
+                        icon: Icons.location_city_outlined,
+                        label: 'City / town',
+                        value: user.city!,
+                        isPlace: true,
+                      ),
                     _Row(
-                      icon: Icons.flag_outlined,
-                      label: 'Goal',
-                      value: profile.goals,
+                      icon: Icons.location_on_outlined,
+                      label: 'District',
+                      value: user.district,
+                      isPlace: true,
                     ),
+                    if (user.stateName != null &&
+                        user.stateName!.trim().isNotEmpty)
+                      _Row(
+                        icon: Icons.map_outlined,
+                        label: 'State',
+                        value: user.stateName!,
+                        isPlace: true,
+                      ),
+                    // Goals are optional, so an empty value means "not stated"
+                    // rather than missing data. Drop the row instead of
+                    // showing a blank one.
+                    if (profile.goals.trim().isNotEmpty)
+                      _Row(
+                        icon: Icons.flag_outlined,
+                        label: 'Goal',
+                        value: profile.goals,
+                      ),
                   ],
                 ),
               ),
@@ -205,11 +233,18 @@ class _ProfileHeader extends StatelessWidget {
     required this.name,
     required this.currentClass,
     required this.district,
+    this.city,
   });
 
   final String name;
   final String currentClass;
   final String district;
+  final String? city;
+
+  /// Prefer the town over the district: it is the more useful pin, and the
+  /// district is where older accounts stop.
+  String get place =>
+      (city != null && city!.trim().isNotEmpty) ? city!.trim() : district;
 
   @override
   Widget build(BuildContext context) {
@@ -267,28 +302,45 @@ class _ProfileHeader extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
-                if (district.isNotEmpty) ...[
+                if (place.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 13,
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          district,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.8),
+                  // PlaceLink is not used here: it tints the link with
+                  // AppColors.primary, which is the gradient this header is
+                  // painted with, so the text would vanish. The map is opened
+                  // directly instead and the white-on-brand styling kept.
+                  InkWell(
+                    onTap: () => openPlaceMap(
+                      context,
+                      place,
+                      subtitle: 'Student \u00b7 $currentClass',
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 13,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            place,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.8),
+                              decoration: Gazetteer.isKnown(place)
+                                  ? TextDecoration.underline
+                                  : null,
+                              decorationColor:
+                                  Colors.white.withValues(alpha: 0.5),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ],
@@ -358,11 +410,15 @@ class _Row extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.isPlace = false,
   });
 
   final IconData icon;
   final String label;
   final String value;
+
+  /// Renders the value as a tappable [PlaceLink] opening a map.
+  final bool isPlace;
 
   @override
   Widget build(BuildContext context) {
@@ -385,15 +441,28 @@ class _Row extends StatelessWidget {
           ),
           Expanded(
             flex: 6,
-            child: Text(
-              value.isEmpty ? '\u2014' : value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            child: isPlace && value.isNotEmpty
+                ? Align(
+                    alignment: Alignment.centerRight,
+                    child: PlaceLink(
+                      name: value,
+                      subtitle: label,
+                      showIcon: false,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : Text(
+                    value.isEmpty ? '\u2014' : value,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
           ),
         ],
       ),

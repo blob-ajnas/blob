@@ -6,6 +6,7 @@ import '../../data/models/enums.dart';
 import '../../state/marketplace_controller.dart';
 import '../dashboards/dashboard_parts.dart';
 import '../widgets/common.dart';
+import '../widgets/place_map.dart';
 
 /// Internal company-manager panel. Reached only by the hidden admin role,
 /// so there is no second app to deploy.
@@ -102,12 +103,36 @@ class _AdminScreenState extends State<AdminScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 3),
-                                      Text(
-                                        '${u.roleLine} · ${u.district}',
-                                        style: const TextStyle(
-                                          fontSize: 12.5,
-                                          color: AppColors.textSecondary,
-                                        ),
+                                      // The district is tappable so an
+                                      // approver can check where an applicant
+                                      // actually is before approving them.
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              '${u.roleLine} · ',
+                                              maxLines: 1,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                color:
+                                                    AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                          PlaceLink(
+                                            name: u.district,
+                                            subtitle:
+                                                u.companyName ?? u.name,
+                                            iconSize: 12,
+                                            style: const TextStyle(
+                                              fontSize: 12.5,
+                                              color:
+                                                  AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),

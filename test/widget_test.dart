@@ -6,6 +6,7 @@ import 'package:blob/core/rbac/permissions.dart';
 import 'package:blob/core/theme/app_colors.dart';
 import 'package:blob/core/utils/money.dart';
 import 'package:blob/data/edu_content.dart';
+import 'package:blob/data/gazetteer.dart';
 import 'package:blob/data/learning_content.dart';
 import 'package:blob/data/models/app_user.dart';
 import 'package:blob/data/models/enums.dart';
@@ -13,6 +14,7 @@ import 'package:blob/data/models/learning.dart';
 import 'package:blob/data/models/role_subtype.dart';
 import 'package:blob/data/task_content_pack.dart';
 import 'package:blob/services/aadhaar_service.dart';
+import 'package:blob/ui/auth/student_details_screen.dart';
 import 'package:blob/ui/shell/track_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -732,6 +734,200 @@ void main() {
       expect(student.subtype, isNull);
       expect(student.isStudent, isTrue);
       expect(Rbac.of(student.role), isEmpty);
+    });
+  });
+
+  group('Gazetteer', () {
+    test('every district and city resolves to coordinates', () {
+      // The gazetteer is the only source of selectable place names, so an
+      // entry that cannot be looked up would be offered in a dropdown and
+      // then refuse to open a map.
+      for (final state in Gazetteer.states) {
+        expect(
+          Gazetteer.lookup(state.name),
+          isNotNull,
+          reason: 'state ${state.name} does not resolve',
+        );
+        for (final district in state.districts) {
+          expect(
+            Gazetteer.lookup(district.name),
+            isNotNull,
+            reason: 'district ${district.name} does not resolve',
+          );
+          for (final city in district.cities) {
+            expect(
+              Gazetteer.lookup(city.name),
+              isNotNull,
+              reason: 'city ${city.name} in ${district.name} does not resolve',
+            );
+          }
+        }
+      }
+    });
+
+    test('every Indian place sits inside India\'s bounding box', () {
+      // Catches transposed or mistyped coordinates, which would otherwise
+      // silently drop a pin in the sea and look plausible in code review.
+      for (final state in Gazetteer.states) {
+        final places = <Place>[
+          state.place,
+          for (final d in state.districts) ...[d.place, ...d.cities],
+        ];
+        for (final p in places) {
+          expect(
+            p.lat,
+            inInclusiveRange(6.0, 37.5),
+            reason: '${p.name} latitude ${p.lat} is outside India',
+          );
+          expect(
+            p.lng,
+            inInclusiveRange(68.0, 97.5),
+            reason: '${p.name} longitude ${p.lng} is outside India',
+          );
+        }
+      }
+    });
+
+    test('district names are unique, so a dropdown choice is unambiguous', () {
+      final seen = <String>{};
+      for (final state in Gazetteer.states) {
+        for (final d in state.districts) {
+          expect(
+            seen.add(d.name.toLowerCase()),
+            isTrue,
+            reason: 'district ${d.name} is listed twice',
+          );
+        }
+      }
+    });
+
+    test('the cascade only offers children of the chosen parent', () {
+      // The guarantee behind "no invalid names": a district can never be
+      // paired with a state it does not belong to.
+      for (final state in Gazetteer.states) {
+        final districts = Gazetteer.districtsIn(state.name);
+        expect(districts, isNotEmpty, reason: '${state.name} has no districts');
+        for (final d in districts) {
+          expect(Gazetteer.stateOfDistrict(d), state.name);
+        }
+      }
+      expect(Gazetteer.districtsIn('Karnataka'), contains('Mandya'));
+      expect(Gazetteer.districtsIn('Kerala'), isNot(contains('Mandya')));
+      expect(Gazetteer.citiesIn('Karnataka', 'Mandya'), contains('Maddur'));
+      // Nothing is offered until the level above has been chosen.
+      expect(Gazetteer.districtsIn(null), isEmpty);
+      expect(Gazetteer.citiesIn('Karnataka', null), isEmpty);
+    });
+
+    test('a more specific place wins over a same-named parent', () {
+      // "Mysuru" is both a district and its principal city. The city is the
+      // more useful pin, so it must be the one lookup returns.
+      final mysuru = Gazetteer.lookup('Mysuru');
+      final cityEntry = Gazetteer.karnataka.districts
+          .firstWhere((d) => d.name == 'Mysuru')
+          .cities
+          .firstWhere((c) => c.name == 'Mysuru');
+      expect(mysuru!.lat, cityEntry.lat);
+      expect(mysuru.lng, cityEntry.lng);
+    });
+
+    test('lookup is tolerant of stored spellings but not of nonsense', () {
+      expect(Gazetteer.lookup('  mandya  ')!.name, 'Mandya');
+      expect(Gazetteer.lookup('MANDYA')!.name, 'Mandya');
+      // Composite values like "Maddur, Mandya" appear in older records.
+      expect(Gazetteer.lookup('Maddur, Mandya')!.name, 'Maddur');
+      // Unknown names must stay null so callers render plain text rather
+      // than pinning the wrong place.
+      expect(Gazetteer.lookup('Mandia'), isNull);
+      expect(Gazetteer.lookup('Atlantis'), isNull);
+      expect(Gazetteer.lookup(''), isNull);
+      expect(Gazetteer.lookup(null), isNull);
+      expect(Gazetteer.isKnown('Bengaluru'), isTrue);
+      expect(Gazetteer.isKnown('Nowhereville'), isFalse);
+    });
+
+    test('search ranks prefix matches first and never invents names', () {
+      final hits = Gazetteer.search('mand');
+      expect(hits, isNotEmpty);
+      expect(hits.first, 'Mandya');
+      for (final hit in hits) {
+        expect(Gazetteer.lookup(hit), isNotNull);
+      }
+      expect(Gazetteer.search(''), isEmpty);
+      expect(Gazetteer.search('zzzzz'), isEmpty);
+      expect(Gazetteer.search('a', limit: 3).length, lessThanOrEqualTo(3));
+    });
+
+    test('every seeded district is a real gazetteer district', () {
+      // Seed data must not introduce a place the dropdowns cannot produce,
+      // or demo accounts would hold names a real signup could never create.
+      for (final district in const [
+        'Mandya',
+        'Mysuru',
+        'Hassan',
+        'Bengaluru Rural',
+        'Tumakuru',
+        'Belagavi',
+        'Ballari',
+      ]) {
+        expect(
+          Gazetteer.stateOfDistrict(district),
+          isNotNull,
+          reason: '$district is used in seed data but is not a district',
+        );
+      }
+    });
+
+    test('exporter and investor countries all resolve', () {
+      expect(Gazetteer.countryNames, contains('India'));
+      expect(Gazetteer.countryNames.first, 'India');
+      for (final name in Gazetteer.countryNames) {
+        expect(Gazetteer.lookup(name), isNotNull, reason: '$name is unmapped');
+      }
+    });
+  });
+
+  group('Location input is constrained', () {
+    test('signup collects location only through the gazetteer pickers', () {
+      // The "no invalid names" guarantee is structural: if a TextFormField
+      // for district or city reappeared in signup, free text would flow
+      // straight back into the records the map depends on.
+      final source =
+          File('lib/ui/auth/role_selection_screen.dart').readAsStringSync();
+      expect(source, contains('LocationPicker('));
+      expect(source, contains('CountryPicker('));
+      for (final banned in const [
+        '_district = TextEditingController',
+        '_country = TextEditingController',
+        '_city = TextEditingController',
+      ]) {
+        expect(
+          source,
+          isNot(contains(banned)),
+          reason: 'signup reintroduced a free-text location field: $banned',
+        );
+      }
+    });
+
+    test('student goals are optional', () {
+      // A student who has not decided what to become must still be able to
+      // finish signing up.
+      final source =
+          File('lib/ui/auth/student_details_screen.dart').readAsStringSync();
+      expect(source, isNot(contains("_required(v, 'Goals')")));
+      expect(source, isNot(contains('at least 15 characters')));
+      expect(source, contains("_FieldLabel('Your goals & aspirations'"));
+
+      // An empty goal must survive the round-trip into a profile.
+      const details = PendingStudentDetails(
+        tenthMarksCardNumber: 'KSEEB2021123456',
+        currentClass: 'Class 10',
+        collegeName: 'Government PU College',
+        goals: '',
+      );
+      final profile = details.toProfile('u_1');
+      expect(profile.goals, isEmpty);
+      expect(StudentProfile.fromMap(profile.toMap()).goals, isEmpty);
     });
   });
 }

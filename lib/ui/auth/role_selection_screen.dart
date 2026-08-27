@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/gazetteer.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/learning.dart';
 import '../../data/models/role_subtype.dart';
@@ -9,6 +10,7 @@ import '../../state/learning_controller.dart';
 import '../../state/session_controller.dart';
 import '../shell/track_router.dart';
 import '../widgets/common.dart';
+import '../widgets/location_picker.dart';
 import 'student_details_screen.dart';
 
 class RoleMeta {
@@ -235,10 +237,14 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _district = TextEditingController();
   final _company = TextEditingController();
   final _registration = TextEditingController();
-  final _country = TextEditingController();
+  // Location is picked from the gazetteer, never typed, so these are plain
+  // values rather than text controllers.
+  String? _stateName;
+  String? _district;
+  String? _city;
+  String? _country;
   LaborerType _laborerType = LaborerType.singleWorker;
   RoleSubtype? _subtype;
   bool _saving = false;
@@ -268,10 +274,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final user = context.read<SessionController>().user;
       if (user != null) {
         _name.text = user.name;
-        _district.text = user.district;
         _company.text = user.companyName ?? '';
         _registration.text = user.registrationNo ?? '';
-        _country.text = user.country ?? '';
+        _country = user.country;
+        _district = user.district.isEmpty ? null : user.district;
+        _city = user.city;
+        // Older accounts stored only a district. Recover the state from the
+        // gazetteer so the dropdown chain opens already populated instead of
+        // forcing the user to re-pick a district they already have.
+        _stateName =
+            user.stateName ?? Gazetteer.stateOfDistrict(user.district);
       }
     }
   }
@@ -279,11 +291,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void dispose() {
     _name.dispose();
-    _district.dispose();
     _company.dispose();
     _registration.dispose();
-    _country.dispose();
     super.dispose();
+  }
+
+  /// Applies a cascading location change. Levels below the one the user touched
+  /// arrive as null and are cleared, so the record can never hold a district
+  /// that does not belong to its state.
+  void _onLocationChanged({String? state, String? district, String? city}) {
+    setState(() {
+      _stateName = state;
+      _district = district;
+      _city = city;
+    });
   }
 
   Future<void> _create() async {
@@ -301,12 +322,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       name: _name.text,
       role: widget.role,
       subtype: _subtype,
-      district: _district.text,
+      district: _district ?? '',
+      stateName: _stateName,
+      city: _city,
       laborerType: _needsCrewSize ? _laborerType : null,
       companyName: _company.text.trim().isEmpty ? null : _company.text.trim(),
       registrationNo:
           _registration.text.trim().isEmpty ? null : _registration.text.trim(),
-      country: _country.text.trim().isEmpty ? null : _country.text.trim(),
+      country: _country,
       category: widget.category,
     );
 
@@ -339,12 +362,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         role: widget.role,
         subtype: _subtype,
         clearSubtype: _subtype == null,
-        district: _district.text.trim(),
+        district: _district ?? '',
+        stateName: _stateName,
+        city: _city,
         laborerType: _needsCrewSize ? _laborerType : null,
         companyName: _company.text.trim().isEmpty ? null : _company.text.trim(),
         registrationNo:
             _registration.text.trim().isEmpty ? null : _registration.text.trim(),
-        country: _country.text.trim().isEmpty ? null : _country.text.trim(),
+        country: _country,
         category: UserCategory.jobSeeker,
         // A role that needs vetting must go back to pending; silently keeping
         // an old "approved" status would grant verified access to a role that
@@ -393,17 +418,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   validator: (v) =>
                       (v?.trim().isEmpty ?? true) ? 'Enter your name' : null,
                 ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _district,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    labelText: session.t('district'),
-                    prefixIcon: const Icon(Icons.location_on_outlined),
-                    hintText: 'e.g. Mandya',
-                  ),
-                  validator: (v) =>
-                      (v?.trim().isEmpty ?? true) ? 'Enter your district' : null,
+                const SizedBox(height: 18),
+                LocationPicker(
+                  state: _stateName,
+                  district: _district,
+                  city: _city,
+                  onChanged: _onLocationChanged,
                 ),
                 if (RoleSubtypeX.hasSubtypes(widget.role)) ...[
                   const SizedBox(height: 22),
@@ -536,16 +556,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
                 ],
                 if (_isExporter || _isInvestor) ...[
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _country,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Country',
-                      prefixIcon: Icon(Icons.public),
-                    ),
-                    validator: (v) =>
-                        (v?.trim().isEmpty ?? true) ? 'Enter your country' : null,
+                  const SizedBox(height: 18),
+                  CountryPicker(
+                    country: _country,
+                    onChanged: (v) => setState(() => _country = v),
                   ),
                 ],
                 if (_isExporter || _isCommercialOperator) ...[
