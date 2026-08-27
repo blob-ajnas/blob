@@ -789,6 +789,11 @@ void main() {
     });
 
     test('district names are unique, so a dropdown choice is unambiguous', () {
+      // India really does have four district names used by two states each
+      // (Aurangabad, Balrampur, Bilaspur, Raigarh). They are stored with the
+      // state in brackets so no two entries collide — without that, one would
+      // shadow the other in the name index and a Bilaspur user could be
+      // pinned in the wrong state, ~1,500km away.
       final seen = <String>{};
       for (final state in Gazetteer.states) {
         for (final d in state.districts) {
@@ -798,6 +803,98 @@ void main() {
             reason: 'district ${d.name} is listed twice',
           );
         }
+      }
+    });
+
+    test('a district name shared by two states is disambiguated', () {
+      // Guards the mechanism above rather than the specific data: any name
+      // occurring in more than one state must carry its state, and each
+      // qualified entry must resolve to its own coordinates.
+      final byBareName = <String, List<Place>>{};
+      for (final state in Gazetteer.states) {
+        for (final d in state.districts) {
+          final bracket = d.name.indexOf(' (');
+          final bare = bracket > 0 ? d.name.substring(0, bracket) : d.name;
+          byBareName.putIfAbsent(bare.toLowerCase(), () => []).add(d.place);
+        }
+      }
+      final shared = byBareName.entries.where((e) => e.value.length > 1);
+      expect(
+        shared,
+        isNotEmpty,
+        reason: 'India has duplicate district names; expected some qualified',
+      );
+      for (final entry in shared) {
+        for (final place in entry.value) {
+          expect(
+            place.name,
+            contains(' ('),
+            reason: '${place.name} is ambiguous but not qualified by state',
+          );
+          expect(Gazetteer.lookup(place.name), isNotNull);
+        }
+        // The two same-named districts must be genuinely different places.
+        final first = entry.value.first;
+        final second = entry.value[1];
+        expect(
+          first.lat == second.lat && first.lng == second.lng,
+          isFalse,
+          reason: '${entry.key} duplicates share coordinates',
+        );
+      }
+    });
+
+    test('superseded spellings still resolve, ambiguous ones do not', () {
+      // Accounts and seed rows written before a rename must keep their pin.
+      expect(Gazetteer.lookup('Mysore')!.name, 'Mysuru');
+      expect(Gazetteer.lookup('Gulbarga')!.name, 'Kalaburagi');
+      expect(Gazetteer.lookup('Allahabad')!.name, 'Prayagraj');
+      // "Bijapur" is Karnataka's former name for Vijayapura but also a
+      // current, different district in Chhattisgarh. Aliasing it would move
+      // a real Chhattisgarh user 900km, so the current place must win.
+      final bijapur = Gazetteer.lookup('Bijapur');
+      expect(bijapur, isNotNull);
+      expect(Gazetteer.stateOfDistrict('Bijapur'), 'Chhattisgarh');
+    });
+
+    test('every state offers a full set of districts, not a token few', () {
+      // The reason this matters: an earlier hand-written gazetteer gave most
+      // states two or three districts, so a real user from Salem or Nashik
+      // could not finish signing up. A closed dropdown is only acceptable
+      // when the list actually contains the user.
+      expect(Gazetteer.states.length, greaterThanOrEqualTo(36));
+      var total = 0;
+      for (final state in Gazetteer.states) {
+        final districts = Gazetteer.districtsIn(state.name);
+        total += districts.length;
+        // Every district must offer at least one city, or the third dropdown
+        // would sit permanently empty and read as a broken form.
+        for (final d in districts) {
+          expect(
+            Gazetteer.citiesIn(state.name, d),
+            isNotEmpty,
+            reason: '$d in ${state.name} has no selectable city',
+          );
+        }
+      }
+      expect(total, greaterThanOrEqualTo(700));
+      // Spot-check towns that the old Karnataka-only gazetteer would have
+      // rejected outright.
+      for (final place in const [
+        'Salem',
+        'Nashik',
+        'Ludhiana',
+        'Guwahati',
+        'Kanpur',
+        'Bhopal',
+        'Cuttack',
+        'Kozhikode',
+      ]) {
+        expect(
+          Gazetteer.isKnown(place),
+          isTrue,
+          reason: '$place is not selectable',
+        );
       }
     });
 
@@ -847,11 +944,27 @@ void main() {
     });
 
     test('search ranks prefix matches first and never invents names', () {
-      final hits = Gazetteer.search('mand');
+      final hits = Gazetteer.search('mand', limit: 30);
       expect(hits, isNotEmpty);
-      expect(hits.first, 'Mandya');
+      // Every suggestion must be a name the gazetteer can pin, otherwise the
+      // field would propose a place and then fail to map it.
       for (final hit in hits) {
         expect(Gazetteer.lookup(hit), isNotNull);
+      }
+      expect(hits, contains('Mandya'));
+      // Prefix matches must all precede substring matches. Asserted as an
+      // ordering property rather than a fixed first element: now that the
+      // gazetteer covers all of India, "Mandapeta" is an equally valid
+      // prefix hit, and pinning the test to one town would only record
+      // which state happened to sort first.
+      final lastPrefix = hits.lastIndexWhere(
+        (h) => h.toLowerCase().startsWith('mand'),
+      );
+      final firstNonPrefix = hits.indexWhere(
+        (h) => !h.toLowerCase().startsWith('mand'),
+      );
+      if (firstNonPrefix != -1) {
+        expect(firstNonPrefix, greaterThan(lastPrefix));
       }
       expect(Gazetteer.search(''), isEmpty);
       expect(Gazetteer.search('zzzzz'), isEmpty);

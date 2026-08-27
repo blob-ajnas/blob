@@ -63,7 +63,9 @@ class PlaceMapScreen extends StatelessWidget {
                   urlTemplate:
                       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   // OSM's tile policy requires identifying the client.
-                  userAgentPackageName: 'com.agrimarket.market',
+                  // Must match the real applicationId in
+                  // android/app/build.gradle.kts, or OSM cannot identify us.
+                  userAgentPackageName: 'com.blob.blob',
                   maxZoom: 19,
                 ),
                 MarkerLayer(
@@ -84,11 +86,46 @@ class PlaceMapScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                // Required, not decorative: OpenStreetMap's tile usage policy
+                // and GeoNames' CC-BY licence both oblige us to credit them
+                // visibly wherever their data is shown.
+                const _MapAttribution(),
               ],
             ),
           ),
           _PlaceFooter(place: place, title: title, subtitle: subtitle),
         ],
+      ),
+    );
+  }
+}
+
+/// Credit for the map tiles and the place data.
+///
+/// Both licences require attribution to be shown to the user, so this sits on
+/// the map itself rather than buried in an about screen.
+class _MapAttribution extends StatelessWidget {
+  const _MapAttribution();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.82),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            child: Text(
+              '© OpenStreetMap contributors · places from GeoNames',
+              style: TextStyle(fontSize: 9.5, color: Colors.black87),
+            ),
+          ),
+        ),
       ),
     );
   }
