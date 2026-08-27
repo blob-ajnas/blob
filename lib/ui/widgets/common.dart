@@ -170,10 +170,13 @@ class StatusPill extends StatelessWidget {
     };
   }
 
-  factory StatusPill.text(String label) => StatusPill(
+  /// Neutral pill by default. Pass [positive] false for a state the user has
+  /// deliberately turned off (a paused listing), so it reads as dormant rather
+  /// than as something going on.
+  factory StatusPill.text(String label, {bool positive = true}) => StatusPill(
     label: label,
-    color: AppColors.primary,
-    background: AppColors.primarySoft,
+    color: positive ? AppColors.primary : AppColors.pending,
+    background: positive ? AppColors.primarySoft : AppColors.pendingSoft,
   );
 
   @override

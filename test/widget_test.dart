@@ -12,6 +12,7 @@ import 'package:blob/data/models/app_user.dart';
 import 'package:blob/data/models/enums.dart';
 import 'package:blob/data/models/learning.dart';
 import 'package:blob/data/models/role_subtype.dart';
+import 'package:blob/data/models/vehicle.dart';
 import 'package:blob/data/task_content_pack.dart';
 import 'package:blob/services/aadhaar_service.dart';
 import 'package:blob/ui/auth/student_details_screen.dart';
@@ -1041,6 +1042,242 @@ void main() {
       final profile = details.toProfile('u_1');
       expect(profile.goals, isEmpty);
       expect(StudentProfile.fromMap(profile.toMap()).goals, isEmpty);
+    });
+  });
+
+  group('Peer-to-peer vehicle rental', () {
+    test('anyone on the marketplace can list a vehicle and rent one', () {
+      // The requirement is "anyone can list the vehicle for renting and
+      // anyone can get that vehicle for rent". Asserted across every role
+      // rather than a sample, because a single role missing either half is
+      // exactly the failure this feature must not have, and it would be
+      // invisible until a user of that role went looking.
+      for (final role in UserRole.values) {
+        if (role == UserRole.student) continue;
+        expect(
+          Rbac.can(role, Permission.listVehicleForRent),
+          isTrue,
+          reason: '${role.name} cannot list a vehicle for rent',
+        );
+        expect(
+          Rbac.can(role, Permission.rentVehicle),
+          isTrue,
+          reason: '${role.name} cannot rent a vehicle',
+        );
+      }
+    });
+
+    test('students are still excluded from renting', () {
+      // "Anyone" means anyone on the marketplace. Students hold no
+      // marketplace capability by design, and renting a vehicle is squarely
+      // a marketplace act, so the education app must not gain a rental
+      // surface through this feature.
+      expect(Rbac.can(UserRole.student, Permission.listVehicleForRent), isFalse);
+      expect(Rbac.can(UserRole.student, Permission.rentVehicle), isFalse);
+      expect(Rbac.of(UserRole.student), isEmpty);
+      expect(Rbac.peerRentalRoles, isNot(contains(UserRole.student)));
+    });
+
+    test('peer rental is granted centrally, not role by role', () {
+      // Guards against the grant being copied back into individual roles
+      // later, which is how one role ends up quietly missing it.
+      final source = File('lib/core/rbac/permissions.dart').readAsStringSync();
+      final matrix = source.substring(
+        source.indexOf('_matrix = {'),
+        source.indexOf('_peerRental'),
+      );
+      expect(matrix, isNot(contains('Permission.rentVehicle')));
+      expect(matrix, isNot(contains('Permission.listVehicleForRent')));
+    });
+
+    test('lending a vehicle stays separate from running a fleet', () {
+      // A member lending an idle tractor must not be handed the commercial
+      // rental workspace, and a licensed operator must keep it. Collapsing
+      // the two would either burden members with fleet management or hand
+      // permit-bearing surfaces to people who never applied for them.
+      expect(Rbac.can(UserRole.landowner, Permission.manageRentals), isFalse);
+      expect(Rbac.can(UserRole.laborer, Permission.manageFleet), isFalse);
+      expect(
+        Rbac.can(UserRole.vehicleRental, Permission.manageRentals),
+        isTrue,
+      );
+    });
+
+    test('a peer listing is billed by the day and discloses its owner', () {
+      const peer = Vehicle(
+        id: 'v_test',
+        ownerId: 'u_landowner_1',
+        ownerName: 'Ramesh Gowda',
+        category: VehicleCategory.rental,
+        subtype: RoleSubtype.tractorImplementRental,
+        vehicleType: 'Mahindra 575 DI Tractor',
+        registrationNumber: 'KA 11 T 2245',
+        capacityValue: 1,
+        ratePerDayPaise: 160000,
+        district: 'Mandya',
+        peerListed: true,
+        notes: 'Renter fills diesel.',
+      );
+
+      expect(peer.rateUnit, 'day');
+      expect(peer.ratePaise, 160000);
+      expect(peer.category.isDailyRate, isTrue);
+      expect(peer.peerListed, isTrue);
+
+      // Must survive storage, since the badge a renter relies on to tell a
+      // member from a business is read back out of the record.
+      final restored = Vehicle.fromMap(peer.toMap());
+      expect(restored.peerListed, isTrue);
+      expect(restored.notes, 'Renter fills diesel.');
+      expect(restored.subtype, RoleSubtype.tractorImplementRental);
+      expect(restored.ratePerDayPaise, 160000);
+    });
+
+    test('records written before peer rental read as business listings', () {
+      // Older stored vehicles have no peer_listed key. Defaulting to true
+      // would relabel every commercial fleet vehicle as a member listing.
+      final legacy = Vehicle.fromMap({
+        'id': 'v_old',
+        'owner_id': 'u_rental_1',
+        'owner_name': 'Hassan Wheels Rentals',
+        'category': 'rental',
+        'vehicle_type': 'Maruti Swift Dzire',
+        'registration_number': 'KA 13 R 3390',
+        'capacity_value': 5,
+        'rate_per_day_paise': 180000,
+        'district': 'Hassan',
+      });
+      expect(legacy.peerListed, isFalse);
+      expect(legacy.notes, isEmpty);
+    });
+
+    test('an owner can fix a wrong rate without losing the listing', () {
+      // A first-time lister routinely misprices. Without an edit path they
+      // would have to delete and re-list, discarding the record that any
+      // booking already points at.
+      const listed = Vehicle(
+        id: 'v_test',
+        ownerId: 'u_landowner_1',
+        ownerName: 'Ramesh Gowda',
+        category: VehicleCategory.rental,
+        subtype: RoleSubtype.bikeScooterRental,
+        vehicleType: 'Bajaj Platina',
+        registrationNumber: 'KA 13 W 7781',
+        capacityValue: 2,
+        ratePerDayPaise: 35000,
+        district: 'Hassan',
+        peerListed: true,
+      );
+
+      final revised = listed.copyWith(
+        ratePerDayPaise: 45000,
+        notes: 'Helmet provided.',
+      );
+      expect(revised.ratePerDayPaise, 45000);
+      expect(revised.notes, 'Helmet provided.');
+
+      // Identity and derived location must not move: bookings reference the
+      // vehicle, and the district comes from the owner's account.
+      expect(revised.id, listed.id);
+      expect(revised.registrationNumber, listed.registrationNumber);
+      expect(revised.district, listed.district);
+      expect(revised.ownerId, listed.ownerId);
+      expect(revised.peerListed, isTrue);
+    });
+
+    test('the rental kind list covers farm equipment', () {
+      // Lending a tractor is the most valuable peer rental in Indian
+      // agriculture and fits none of the car/jeep/bike kinds.
+      final kinds = RoleSubtypeX.rentalKinds;
+      expect(kinds, contains(RoleSubtype.tractorImplementRental));
+      // Derived from the rental role rather than written out twice, so the
+      // lister's form and the provider's fleet can never disagree.
+      expect(kinds, RoleSubtypeX.forRole(UserRole.vehicleRental));
+      for (final kind in kinds) {
+        expect(kind.vehicleCategory, VehicleCategory.rental);
+        expect(kind.label, isNotEmpty);
+      }
+    });
+
+    test('both directions of rental are reachable from one screen', () {
+      // The same person rents in one season and lends in another, so lending
+      // must not be buried behind a separate, more official-looking route.
+      final hub =
+          File('lib/ui/transport/rental_hub_screen.dart').readAsStringSync();
+      expect(hub, contains("text: 'Rent'"));
+      expect(hub, contains("text: 'Lend'"));
+      expect(hub, contains('listVehicleForRent'));
+
+      // Offered to every permitted role from the shell, and appended to every
+      // dashboard from one place rather than per role.
+      final shell = File('lib/ui/shell/app_shell.dart').readAsStringSync();
+      expect(shell, contains('Permission.listVehicleForRent'));
+      expect(shell, contains('RentalHubScreen()'));
+
+      final home = File('lib/ui/dashboards/role_home.dart').readAsStringSync();
+      expect(home, contains('Permission.listVehicleForRent'));
+    });
+
+    test('rental listings derive their district, never ask for it', () {
+      // Every mappable place in BLOB comes from the owner's account. A rate
+      // field is safe to type; a place name is not.
+      final controller =
+          File('lib/state/marketplace_controller.dart').readAsStringSync();
+      final method = controller.substring(
+        controller.indexOf('Future<Vehicle> listVehicleForRent('),
+        controller.indexOf('List<Vehicle> rentableVehicles('),
+      );
+      expect(method, contains('district: owner.district'));
+      expect(method, contains('peerListed: true'));
+      expect(method, contains('VehicleCategory.rental'));
+
+      final hub =
+          File('lib/ui/transport/rental_hub_screen.dart').readAsStringSync();
+      expect(hub, isNot(contains('_district')));
+    });
+  });
+
+  group('Nothing demo-only ships in a release build', () {
+    test('the lesson skip button is compiled out of release builds', () {
+      // It awards a full lesson's points without the lesson, so shipping it
+      // would make every points total and leaderboard position meaningless.
+      final source =
+          File('lib/ui/learning/video_task_screen.dart').readAsStringSync();
+      expect(source, isNot(contains('demo only')));
+      expect(source, contains('kDebugMode && !_isComplete'));
+    });
+
+    test('account switching is compiled out of release builds', () {
+      // The sheet signs into ANY account on the device, administrators
+      // included, with no password or OTP. In a release build that is a
+      // complete authentication bypass.
+      final source =
+          File('lib/ui/profile/profile_screen.dart').readAsStringSync();
+      expect(source, isNot(contains("title: 'Switch demo account'")));
+      expect(source, contains('if (kDebugMode)'));
+
+      // The guard has to sit on the entry point, not just the sheet, or the
+      // row still renders and only fails when tapped.
+      final tileAt = source.indexOf('Switch account (debug build)');
+      final guardAt = source.lastIndexOf('if (kDebugMode)', tileAt);
+      expect(guardAt, greaterThan(-1));
+      expect(tileAt - guardAt, lessThan(400));
+    });
+
+    test('the OTP code banner disappears with a real SMS provider', () {
+      // Unlike the two above, this one cannot simply be deleted: the dev
+      // provider is currently the only way to receive a code, so hiding it
+      // would lock everyone out. It is safe because the banner is bound to
+      // devCode, which only DevOtpProvider populates — swapping in Firebase
+      // Phone Auth removes the banner with no UI change.
+      final screen = File('lib/ui/auth/otp_screen.dart').readAsStringSync();
+      expect(screen, contains('session.devCode != null'));
+
+      final service = File('lib/services/otp_service.dart').readAsStringSync();
+      expect(service, contains('class DevOtpProvider'));
+      // Only the dev provider may ever hand back a code.
+      final providers = RegExp(r'devCode: ').allMatches(service).length;
+      expect(providers, 1);
     });
   });
 }

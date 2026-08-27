@@ -28,8 +28,10 @@ class TransportBookingScreen extends StatefulWidget {
   const TransportBookingScreen.taxi({super.key})
       : category = VehicleCategory.passenger;
 
-  const TransportBookingScreen.rental({super.key})
-      : category = VehicleCategory.rental;
+  // There is deliberately no `.rental` constructor. Renting now goes through
+  // RentalHubScreen, which shows both directions and discloses whether a
+  // vehicle comes from a business or a member. A second, thinner route to
+  // renting would hide the lending half of the feature from whoever took it.
 
   @override
   State<TransportBookingScreen> createState() =>
@@ -277,17 +279,25 @@ class _BookableVehicleCard extends StatelessWidget {
     );
   }
 
-  void _openBookingSheet(BuildContext context, Vehicle vehicle) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _BookingSheet(vehicle: vehicle),
-    );
-  }
+  void _openBookingSheet(BuildContext context, Vehicle vehicle) =>
+      openRentalBookingSheet(context, vehicle);
+}
+
+/// Opens the booking sheet for any vehicle.
+///
+/// Exposed so the rental hub books through this exact flow rather than a
+/// second copy of it: fare arithmetic and the ledger entry must not have two
+/// implementations that can disagree.
+void openRentalBookingSheet(BuildContext context, Vehicle vehicle) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => _BookingSheet(vehicle: vehicle),
+  );
 }
 
 class _BookingSheet extends StatefulWidget {

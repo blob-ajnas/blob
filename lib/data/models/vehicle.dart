@@ -1,7 +1,13 @@
 import 'enums.dart';
 import 'role_subtype.dart';
 
-/// vehicles table/collection — owned by transport, taxi and rental providers.
+/// vehicles table/collection.
+///
+/// Two kinds of owner sit in here. Commercial operators (transport, taxi and
+/// registered rental businesses) list from their fleet workspace. Ordinary
+/// members list a single idle vehicle for rent — see [peerListed]. Both are
+/// the same record because a renter browses one pool and books through one
+/// flow; only the disclosure differs.
 class Vehicle {
   final String id;
   final String ownerId;
@@ -16,6 +22,19 @@ class Vehicle {
   final String district;
   final bool available;
 
+  /// Listed by an ordinary member rather than a registered operator.
+  ///
+  /// Shown to renters instead of being kept internal: renting a neighbour's
+  /// tractor and hiring from a licensed firm carry different expectations
+  /// about paperwork and recourse, and the renter is entitled to know which
+  /// one they are dealing with before they commit money.
+  final bool peerListed;
+
+  /// Owner's own terms — fuel, deposit, driver, area limits. Free text because
+  /// these conditions are genuinely local and a fixed set of fields would
+  /// force owners to misstate them.
+  final String notes;
+
   const Vehicle({
     required this.id,
     required this.ownerId,
@@ -29,6 +48,8 @@ class Vehicle {
     this.ratePerKmPaise = 0,
     this.ratePerDayPaise = 0,
     this.available = true,
+    this.peerListed = false,
+    this.notes = '',
   });
 
   String get capacityLabel => switch (category) {
@@ -42,19 +63,37 @@ class Vehicle {
 
   String get rateUnit => category.isDailyRate ? 'day' : 'km';
 
-  Vehicle copyWith({bool? available}) => Vehicle(
+  /// Fields an owner may revise after listing.
+  ///
+  /// Rate, kind, capacity and notes are editable because a first-time lister
+  /// routinely gets the price wrong and would otherwise have to delete and
+  /// re-list, losing the record. Identity, owner and district are not
+  /// editable: the district is derived from the owner's account, and letting
+  /// a registration number change would turn one listing into a different
+  /// vehicle while bookings still pointed at it.
+  Vehicle copyWith({
+    bool? available,
+    RoleSubtype? subtype,
+    String? vehicleType,
+    double? capacityValue,
+    int? ratePerKmPaise,
+    int? ratePerDayPaise,
+    String? notes,
+  }) => Vehicle(
     id: id,
     ownerId: ownerId,
     ownerName: ownerName,
     category: category,
-    subtype: subtype,
-    vehicleType: vehicleType,
+    subtype: subtype ?? this.subtype,
+    vehicleType: vehicleType ?? this.vehicleType,
     registrationNumber: registrationNumber,
-    capacityValue: capacityValue,
-    ratePerKmPaise: ratePerKmPaise,
-    ratePerDayPaise: ratePerDayPaise,
+    capacityValue: capacityValue ?? this.capacityValue,
+    ratePerKmPaise: ratePerKmPaise ?? this.ratePerKmPaise,
+    ratePerDayPaise: ratePerDayPaise ?? this.ratePerDayPaise,
     district: district,
     available: available ?? this.available,
+    peerListed: peerListed,
+    notes: notes ?? this.notes,
   );
 
   Map<String, dynamic> toMap() => {
@@ -70,6 +109,8 @@ class Vehicle {
     'rate_per_day_paise': ratePerDayPaise,
     'district': district,
     'available': available,
+    'peer_listed': peerListed,
+    'notes': notes,
   };
 
   factory Vehicle.fromMap(Map<dynamic, dynamic> m) => Vehicle(
@@ -85,6 +126,10 @@ class Vehicle {
     ratePerDayPaise: (m['rate_per_day_paise'] as num?)?.toInt() ?? 0,
     district: m['district'] as String? ?? '',
     available: m['available'] as bool? ?? true,
+    // Absent on records written before peer listing existed, which were all
+    // created by commercial operators — so false is the correct reading.
+    peerListed: m['peer_listed'] as bool? ?? false,
+    notes: m['notes'] as String? ?? '',
   );
 }
 

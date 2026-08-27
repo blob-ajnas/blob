@@ -45,6 +45,11 @@ enum RoleSubtype {
   jeepSuvRental,
   bikeScooterRental,
 
+  /// Farm machinery let out by the day. Added for peer-to-peer rental: an
+  /// idle tractor or tiller is the single most valuable thing one farmer can
+  /// lend another, and it fits none of the car/bike kinds above.
+  tractorImplementRental,
+
   // ---- Property, land & rental ----
   agricultureLandLease,
   commercialBuilding,
@@ -82,7 +87,8 @@ extension RoleSubtypeX on RoleSubtype {
       UserRole.taxiService,
     RoleSubtype.carRental ||
     RoleSubtype.jeepSuvRental ||
-    RoleSubtype.bikeScooterRental =>
+    RoleSubtype.bikeScooterRental ||
+    RoleSubtype.tractorImplementRental =>
       UserRole.vehicleRental,
     RoleSubtype.agricultureLandLease ||
     RoleSubtype.commercialBuilding ||
@@ -111,6 +117,7 @@ extension RoleSubtypeX on RoleSubtype {
     RoleSubtype.carRental => 'Car Rental',
     RoleSubtype.jeepSuvRental => 'Jeep / SUV',
     RoleSubtype.bikeScooterRental => 'Bike / Scooter',
+    RoleSubtype.tractorImplementRental => 'Tractor / Farm Equipment',
     RoleSubtype.agricultureLandLease => 'Agriculture Land Lease',
     RoleSubtype.commercialBuilding => 'Commercial Building',
     RoleSubtype.residentialQuarters => 'Residential House / Quarters',
@@ -151,6 +158,8 @@ extension RoleSubtypeX on RoleSubtype {
     RoleSubtype.carRental => 'Self-drive hatchbacks and sedans by the day',
     RoleSubtype.jeepSuvRental => 'Jeeps and SUVs for rough farm roads',
     RoleSubtype.bikeScooterRental => 'Two-wheelers for short local runs',
+    RoleSubtype.tractorImplementRental =>
+      'Tractors, tillers and implements by the day',
     RoleSubtype.agricultureLandLease =>
       'Farmland leased by the acre for cultivation',
     RoleSubtype.commercialBuilding =>
@@ -180,6 +189,7 @@ extension RoleSubtypeX on RoleSubtype {
     RoleSubtype.carRental => Icons.directions_car_outlined,
     RoleSubtype.jeepSuvRental => Icons.airport_shuttle,
     RoleSubtype.bikeScooterRental => Icons.two_wheeler_outlined,
+    RoleSubtype.tractorImplementRental => Icons.agriculture,
     RoleSubtype.agricultureLandLease => Icons.grass_outlined,
     RoleSubtype.commercialBuilding => Icons.store_mall_directory_outlined,
     RoleSubtype.residentialQuarters => Icons.house_outlined,
@@ -220,4 +230,9 @@ extension RoleSubtypeX on RoleSubtype {
 
   /// Sub-types that describe a rentable property.
   static List<RoleSubtype> get propertyKinds => forRole(UserRole.propertyOwner);
+
+  /// Kinds of vehicle anyone may put up for rent. Derived from the rental
+  /// role's list rather than written out again, so a kind added above appears
+  /// in the peer-listing form automatically and the two can never disagree.
+  static List<RoleSubtype> get rentalKinds => forRole(UserRole.vehicleRental);
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -217,12 +218,17 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
             ),
-            _Tile(
-              icon: Icons.people_outline,
-              title: 'Switch demo account',
-              subtitle: 'Preview any role instantly',
-              onTap: () => _switchAccount(context, market),
-            ),
+            // Debug builds only. This signs into ANY account on the device,
+            // administrators included, with no password or OTP — it is a
+            // complete authentication bypass and must never reach a release
+            // build. Kept for local review of the role dashboards.
+            if (kDebugMode)
+              _Tile(
+                icon: Icons.people_outline,
+                title: 'Switch account (debug build)',
+                subtitle: 'Preview any role instantly',
+                onTap: () => _switchAccount(context, market),
+              ),
             const SizedBox(height: 10),
             const InfoBanner(
               icon: Icons.currency_rupee,

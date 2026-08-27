@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/rbac/permissions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/enums.dart';
@@ -15,6 +16,7 @@ import '../payments/payments_screen.dart';
 import '../property/create_property_screen.dart';
 import '../property/property_market_screen.dart';
 import '../transport/fleet_screen.dart';
+import '../transport/rental_hub_screen.dart';
 import '../transport/transport_booking_screen.dart';
 import '../widgets/common.dart';
 import 'dashboard_parts.dart';
@@ -66,6 +68,16 @@ class RoleHome extends StatelessWidget {
   }
 
   List<Widget> _bodyFor(BuildContext context, AppUser user) {
+    final body = _roleBody(context, user);
+    // Peer rental is appended for every role from this one place rather than
+    // added to each dashboard by hand. Twelve separate edits would be twelve
+    // chances to leave a role out, and "anyone can list, anyone can rent" is
+    // the whole requirement — a role missing it would be a silent failure.
+    if (!user.can(Permission.listVehicleForRent)) return body;
+    return [...body, const SizedBox(height: 26), const _RentalPrompt()];
+  }
+
+  List<Widget> _roleBody(BuildContext context, AppUser user) {
     return switch (user.role) {
       UserRole.landowner => _landowner(context, user),
       UserRole.buyer => _buyer(context, user),
@@ -141,11 +153,9 @@ class RoleHome extends StatelessWidget {
             label: 'Book Ride',
             onTap: () => _push(context, const TransportBookingScreen.taxi()),
           ),
-          ActionTile(
-            icon: Icons.vpn_key_outlined,
-            label: 'Rent Vehicle',
-            onTap: () => _push(context, const TransportBookingScreen.rental()),
-          ),
+          // No rental tile here: every dashboard already ends with the
+          // Rent / Lend card, and a second route to the same screen just
+          // crowds the grid.
           ActionTile(
             icon: Icons.account_balance_wallet_outlined,
             label: 'Payments',
@@ -663,5 +673,79 @@ class RoleHome extends StatelessWidget {
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+}
+
+/// Both directions of peer rental, shown on every marketplace dashboard.
+///
+/// It states outright that no licence or business account is needed, because
+/// the reason members do not list is that they assume renting out a vehicle is
+/// something only registered operators may do.
+class _RentalPrompt extends StatelessWidget {
+  const _RentalPrompt();
+
+  @override
+  Widget build(BuildContext context) {
+    final market = context.watch<MarketplaceController>();
+    final user = context.watch<SessionController>().user!;
+    final mine = market.rentalsListedBy(user.id);
+
+    void open({bool lend = false}) => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RentalHubScreen(startOnLend: lend),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader('Vehicle Rental'),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                mine.isEmpty
+                    ? 'Rent a vehicle by the day, or earn from one you '
+                        'already own. No licence or business account needed.'
+                    : 'You have ${mine.length} vehicle'
+                        '${mine.length == 1 ? '' : 's'} listed for rent.',
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.vpn_key_outlined, size: 18),
+                      label: const Text('Rent'),
+                      onPressed: () => open(),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.handshake_outlined, size: 18),
+                      label: Text(mine.isEmpty ? 'Lend' : 'Manage'),
+                      onPressed: () => open(lend: true),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

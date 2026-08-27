@@ -452,10 +452,102 @@ class MarketplaceController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Lists a vehicle for rent on behalf of an ordinary member.
+  ///
+  /// Separate entry point from [addVehicle] rather than another flag on it,
+  /// because the two have genuinely different rules: this one is always a
+  /// daily-rate rental, always marks the record [Vehicle.peerListed], and
+  /// accepts a rental kind chosen freely instead of inheriting the account's
+  /// provider specialisation.
+  Future<Vehicle> listVehicleForRent({
+    required AppUser owner,
+    required RoleSubtype kind,
+    required String vehicleType,
+    required String registrationNumber,
+    required double capacityValue,
+    required int ratePerDayPaise,
+    String notes = '',
+  }) async {
+    final vehicle = Vehicle(
+      id: _uuid.v4(),
+      ownerId: owner.id,
+      ownerName: owner.name,
+      category: VehicleCategory.rental,
+      subtype: kind,
+      vehicleType: vehicleType,
+      registrationNumber: registrationNumber,
+      capacityValue: capacityValue,
+      ratePerDayPaise: ratePerDayPaise,
+      // Derived from the account, never typed. Keeps every listing's district
+      // a real gazetteer place without asking the lister for it again.
+      district: owner.district,
+      peerListed: true,
+      notes: notes,
+    );
+    await _db.put(LocalDb.vehicles, vehicle.id, vehicle.toMap());
+    notifyListeners();
+    return vehicle;
+  }
+
+  /// Every vehicle offered for rent, whichever kind of owner listed it.
+  /// Renters browse one pool; the card discloses who they would be renting
+  /// from.
+  List<Vehicle> rentableVehicles({RoleSubtype? kind}) =>
+      availableVehicles(VehicleCategory.rental, subtype: kind);
+
+  /// A member's own rental listings, for the "vehicles I lend" view.
+  List<Vehicle> rentalsListedBy(String ownerId) => vehicles
+      .where((v) => v.ownerId == ownerId && v.category.isDailyRate)
+      .toList();
+
   Future<void> toggleVehicleAvailability(Vehicle v) async {
     final updated = v.copyWith(available: !v.available);
     await _db.put(LocalDb.vehicles, updated.id, updated.toMap());
     notifyListeners();
+  }
+
+  /// Revises an existing listing. Only the fields [Vehicle.copyWith] allows
+  /// can move; identity and district stay put.
+  Future<void> updateVehicle(
+    Vehicle v, {
+    RoleSubtype? kind,
+    String? vehicleType,
+    double? capacityValue,
+    int? ratePaise,
+    String? notes,
+  }) async {
+    final updated = v.copyWith(
+      subtype: kind,
+      vehicleType: vehicleType,
+      capacityValue: capacityValue,
+      ratePerKmPaise: ratePaise != null && !v.category.isDailyRate
+          ? ratePaise
+          : null,
+      ratePerDayPaise:
+          ratePaise != null && v.category.isDailyRate ? ratePaise : null,
+      notes: notes,
+    );
+    await _db.put(LocalDb.vehicles, updated.id, updated.toMap());
+    notifyListeners();
+  }
+
+  /// Whether a listing can be withdrawn outright.
+  ///
+  /// Blocked while a booking is still live, so a renter who has already
+  /// committed cannot have the vehicle vanish from under them. Once trips are
+  /// completed or cancelled the listing is free to go.
+  bool canDeleteVehicle(String vehicleId) => !bookings.any((b) =>
+      b.vehicleId == vehicleId &&
+      b.status != BookingStatus.delivered &&
+      b.status != BookingStatus.cancelled);
+
+  /// Withdraws a listing. Returns false when a live booking blocks it, so the
+  /// caller can explain why rather than failing silently.
+  Future<bool> deleteVehicle(Vehicle v) async {
+    if (!canDeleteVehicle(v.id)) return false;
+    await _db.delete(LocalDb.vehicles, v.id);
+    notifyListeners();
+    return true;
   }
 
   /// Books a goods trip, a taxi ride or a self-drive rental. Pass

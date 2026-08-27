@@ -22,6 +22,12 @@ enum Permission {
   bookGoodsVehicle,
   bookTaxi,
   rentVehicle,
+
+  /// Put a vehicle up for rent as an ordinary member, not as a licensed
+  /// operator. Held by every marketplace role on purpose — see
+  /// [Rbac.peerRentalRoles] for why this one is granted so widely.
+  listVehicleForRent,
+
   manageFleet,
   manageRentals,
   provideTaxi,
@@ -46,7 +52,8 @@ class Rbac {
       Permission.discoverInvestors,
       Permission.bookGoodsVehicle,
       Permission.bookTaxi,
-      Permission.rentVehicle,
+      // rentVehicle and listVehicleForRent are not listed here or anywhere
+      // below: peer rental is granted to every role from [_peerRental].
       Permission.browseProperty,
       Permission.listProperty,
       Permission.viewPaymentTracker,
@@ -58,7 +65,6 @@ class Rbac {
       Permission.assignLaborers,
       Permission.bookGoodsVehicle,
       Permission.bookTaxi,
-      Permission.rentVehicle,
       Permission.browseProperty,
       Permission.viewPaymentTracker,
     },
@@ -123,6 +129,30 @@ class Rbac {
     },
   };
 
+  /// Peer-to-peer vehicle rental is open to everybody: any member may put a
+  /// vehicle up for rent, and any member may rent one. It is granted here
+  /// rather than by repeating two lines in every role above, because that
+  /// repetition would invite one role being quietly forgotten later — which is
+  /// exactly the bug this vertical must not have.
+  ///
+  /// This is a different thing from [Permission.manageRentals], which stays
+  /// with licensed rental businesses: they run a commercial fleet with permit
+  /// obligations and get the fleet workspace. A farmer lending out an idle
+  /// tractor for a fortnight is not that, and should not have to register as
+  /// an operator to do it.
+  static const Set<Permission> _peerRental = {
+    Permission.listVehicleForRent,
+    Permission.rentVehicle,
+  };
+
+  /// Every role except [UserRole.student]. Students hold no marketplace
+  /// capability at all (see [_matrix]), and renting out a vehicle is squarely
+  /// a marketplace act, so "anyone" means anyone on the marketplace side.
+  static Set<UserRole> get peerRentalRoles =>
+      UserRole.values.where((r) => r != UserRole.student).toSet();
+
+  static bool _hasPeerRental(UserRole role) => role != UserRole.student;
+
   /// Capabilities added on top of the role baseline by a specialisation.
   static const Map<RoleSubtype, Set<Permission>> _subtypeGrants = {
     // Only wholesale buyers move stock onward to exporters; retail buyers
@@ -150,8 +180,9 @@ class Rbac {
     final extra = subtype == null
         ? const <Permission>{}
         : (_subtypeGrants[subtype] ?? const <Permission>{});
-    if (extra.isEmpty) return base;
-    return {...base, ...extra};
+    final peer = _hasPeerRental(role) ? _peerRental : const <Permission>{};
+    if (extra.isEmpty && peer.isEmpty) return base;
+    return {...base, ...extra, ...peer};
   }
 
   static bool can(
@@ -160,6 +191,7 @@ class Rbac {
     RoleSubtype? subtype,
   }) {
     if (_matrix[role]?.contains(permission) ?? false) return true;
+    if (_peerRental.contains(permission) && _hasPeerRental(role)) return true;
     if (subtype == null) return false;
     return _subtypeGrants[subtype]?.contains(permission) ?? false;
   }

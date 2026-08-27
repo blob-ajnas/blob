@@ -14,6 +14,7 @@ import '../payments/payments_screen.dart';
 import '../profile/profile_screen.dart';
 import '../property/property_market_screen.dart';
 import '../transport/fleet_screen.dart';
+import '../transport/rental_hub_screen.dart';
 import '../transport/transport_booking_screen.dart';
 
 class NavDestination {
@@ -151,6 +152,18 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.local_taxi,
         labelKey: 'rides',
         screen: TransportBookingScreen.taxi(),
+      ),
+    );
+    // Peer rental is open to everyone, so it is offered to every role that
+    // still has a slot. Roles that run out of slots keep reaching it from the
+    // dashboard's Rent / Lend actions.
+    offer(
+      can(Permission.listVehicleForRent),
+      const NavDestination(
+        icon: Icons.vpn_key_outlined,
+        activeIcon: Icons.vpn_key,
+        labelKey: 'rentals',
+        screen: RentalHubScreen(),
       ),
     );
 

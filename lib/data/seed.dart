@@ -26,7 +26,10 @@ class Seed {
   // v7: seeded video history is now per-track. v6 installs recorded an agri
   // lesson title for students, surfacing agri-market content in the education
   // app's Progress tab, so the bump forces a re-seed.
-  static const _kSeeded = 'seed_v7';
+  // v8: peer-to-peer vehicle rental. Existing installs have no member-listed
+  // vehicles at all, so the Rent tab would open empty and read as broken
+  // rather than as a new feature — the bump forces a re-seed.
+  static const _kSeeded = 'seed_v8';
 
   static Future<void> ensure() async {
     final db = LocalDb.instance;
@@ -610,6 +613,39 @@ class Seed {
         capacityValue: 2,
         ratePerDayPaise: 45000,
         district: 'Hassan',
+      ),
+      // ---- Peer listings: ordinary members lending their own vehicles ----
+      // Seeded from a landowner and a labourer, not a rental account, so the
+      // Rent tab demonstrates from first launch that these listings come from
+      // members rather than only from registered businesses.
+      Vehicle(
+        id: 'v_11',
+        ownerId: 'u_landowner_1',
+        ownerName: 'Ramesh Gowda',
+        category: VehicleCategory.rental,
+        subtype: RoleSubtype.tractorImplementRental,
+        vehicleType: 'Mahindra 575 DI Tractor',
+        registrationNumber: 'KA 11 T 2245',
+        capacityValue: 1,
+        ratePerDayPaise: 160000,
+        district: 'Mandya',
+        peerListed: true,
+        notes: 'Rotavator and trailer included. Renter fills diesel. '
+            'Within Mandya district only.',
+      ),
+      Vehicle(
+        id: 'v_12',
+        ownerId: 'u_landowner_2',
+        ownerName: 'Lakshmamma B',
+        category: VehicleCategory.rental,
+        subtype: RoleSubtype.bikeScooterRental,
+        vehicleType: 'Bajaj Platina 110',
+        registrationNumber: 'KA 13 W 7781',
+        capacityValue: 2,
+        ratePerDayPaise: 35000,
+        district: 'Hassan',
+        peerListed: true,
+        notes: 'Free on weekdays. Helmet provided. \u20B91,000 deposit.',
       ),
     ];
 

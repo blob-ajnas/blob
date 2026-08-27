@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -104,8 +105,12 @@ class _VideoTaskScreenState extends State<VideoTaskScreen> {
     }
   }
 
-  /// Dev affordance: nobody should sit through 15 real minutes to check the
-  /// flow works. Clearly labelled so it is not mistaken for a user feature.
+  /// Debug-build affordance: nobody should sit through 15 real minutes to
+  /// check the flow works.
+  ///
+  /// Compiled out of release builds by the [kDebugMode] guard on its button.
+  /// It awards the full lesson's points without the lesson, so shipping it
+  /// would make every points total and leaderboard position meaningless.
   Future<void> _skipForTesting() async {
     final remaining = _lesson.minutes - _totalMinutesWatched;
     if (remaining <= 0) return;
@@ -268,12 +273,14 @@ class _VideoTaskScreenState extends State<VideoTaskScreen> {
                 ),
               ],
             ),
-            if (!_isComplete) ...[
+            // Debug builds only. Awarding a lesson's points without the
+            // lesson cannot be offered to real students.
+            if (kDebugMode && !_isComplete) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _skipForTesting,
                 icon: const Icon(Icons.fast_forward, size: 18),
-                label: const Text('Skip to end (demo only)'),
+                label: const Text('Skip to end (debug build)'),
               ),
             ],
             const SizedBox(height: 18),
